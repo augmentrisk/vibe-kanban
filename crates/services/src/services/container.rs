@@ -39,7 +39,8 @@ use executors::{
     logs::{NormalizedEntry, NormalizedEntryError, NormalizedEntryType, utils::ConversationPatch},
     profile::ExecutorProfileId,
 };
-use futures::{StreamExt, future};
+use futures::{StreamExt, future, stream::BoxStream};
+use json_patch::Patch;
 use sqlx::Error as SqlxError;
 use thiserror::Error;
 use tokio::{sync::RwLock, task::JoinHandle};
@@ -95,6 +96,20 @@ pub trait ContainerService {
     fn notification_service(&self) -> &NotificationService;
 
     fn workspace_to_current_dir(&self, workspace: &Workspace) -> PathBuf;
+
+    /// Stub - slash commands feature not implemented in this fork
+    async fn available_agent_slash_commands(
+        &self,
+        _executor_profile_id: ExecutorProfileId,
+        _workspace_id: Option<Uuid>,
+        _repo_id: Option<Uuid>,
+    ) -> Result<Option<BoxStream<'static, Patch>>, ContainerError> {
+        Ok(None)
+    }
+
+    async fn store_db_stream_handle(&self, id: Uuid, handle: JoinHandle<()>);
+
+    async fn take_db_stream_handle(&self, id: &Uuid) -> Option<JoinHandle<()>>;
 
     async fn create(&self, workspace: &Workspace) -> Result<ContainerRef, ContainerError>;
 
@@ -862,7 +877,7 @@ pub trait ContainerService {
             .await?
             .ok_or(SqlxError::RowNotFound)?;
 
-        // Create a session for this workspace (system-initiated, no specific user)
+        // Create a session for this workspace
         let session = Session::create(
             &self.db().pool,
             &CreateSession {
@@ -870,7 +885,7 @@ pub trait ContainerService {
             },
             Uuid::new_v4(),
             workspace.id,
-            None, // System-initiated session
+            None, // initiated_by_user_id - not available in this context
         )
         .await?;
 
@@ -1120,7 +1135,9 @@ pub trait ContainerService {
             }
         }
 
-        self.spawn_stream_raw_logs_to_db(&execution_process.id);
+        let db_stream_handle = self.spawn_stream_raw_logs_to_db(&execution_process.id);
+        self.store_db_stream_handle(execution_process.id, db_stream_handle)
+            .await;
         Ok(execution_process)
     }
 

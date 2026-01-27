@@ -459,7 +459,7 @@ impl Codex {
         Ok(SpawnedChild {
             child,
             exit_signal: Some(exit_signal_rx),
-            interrupt_sender: None,
+            cancel: None,
         })
     }
 
@@ -477,15 +477,17 @@ impl Codex {
         repo_context: crate::env::RepoContext,
         commit_reminder: bool,
     ) -> Result<(), ExecutorError> {
+        let cancel = tokio_util::sync::CancellationToken::new();
         let client = AppServerClient::new(
             log_writer,
             approvals,
             auto_approve,
             repo_context,
             commit_reminder,
+            cancel.clone(),
         );
         let rpc_peer =
-            JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx);
+            JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx, cancel);
         client.connect(rpc_peer);
         client.initialize().await?;
         let auth_status = client.get_auth_status().await?;

@@ -80,7 +80,7 @@
           "host": {
             "label": "Remote SSH Host (Optional)",
             "placeholder": "e.g., hostname or IP address",
-            "helper": "Set this if Vibe Kanban is running on a remote server. When set, clicking \"Open in Editor\" will generate a URL to open your editor via SSH instead of spawning a local command."
+            "helper": "Set this if MultiVibe is running on a remote server. When set, clicking \"Open in Editor\" will generate a URL to open your editor via SSH instead of spawning a local command."
           },
           "user": {
             "label": "Remote SSH User (Optional)",
@@ -194,7 +194,7 @@
       },
       "privacy": {
         "title": "Privacy",
-        "description": "Help improve Vibe-Kanban by sharing anonymous usage data.",
+        "description": "Help improve MultiVibe by sharing anonymous usage data.",
         "telemetry": {
           "label": "Enable Telemetry",
           "helper": "Enables anonymous usage events tracking to help improve the application. No prompts or project information are collected."
@@ -463,7 +463,7 @@
       "description": "Contribute your Claude Code Max subscription to the shared token pool for fair usage rotation.",
       "dialog": {
         "title": "Claude Code Token Required",
-        "description": "To run coding tasks, you need to configure your Claude Code OAuth token. This allows Vibe Kanban to use your Claude Code subscription."
+        "description": "To run coding tasks, you need to configure your Claude Code OAuth token. This allows MultiVibe to use your Claude Code subscription."
       },
       "yourToken": {
         "title": "Your Token",
@@ -491,7 +491,7 @@
         "step2Run": "Run:",
         "step3": "Follow the prompts to authenticate with your Claude Max account",
         "step4": "Copy the generated token and paste it above",
-        "note": "This token allows Vibe Kanban to use your Claude Code subscription. Tokens are rotated fairly among all contributors."
+        "note": "This token allows MultiVibe to use your Claude Code subscription. Tokens are rotated fairly among all contributors."
       },
       "teamPool": {
         "title": "Team Token Pool",

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      creator_user_id as \"creator_user_id: Uuid\",\n                      min_approvals_required as \"min_approvals_required!: i64\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE id = $1",
+  "query": "UPDATE projects\n               SET name = $2, min_approvals_required = $3, color = $4\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\",\n                         name,\n                         default_agent_working_dir,\n                         remote_project_id as \"remote_project_id: Uuid\",\n                         creator_user_id as \"creator_user_id: Uuid\",\n                         min_approvals_required as \"min_approvals_required!: i64\",\n                         color,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -34,18 +34,23 @@
         "type_info": "Integer"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "color",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 8,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 4
     },
     "nullable": [
       true,
@@ -54,9 +59,10 @@
       true,
       true,
       false,
+      true,
       false,
       false
     ]
   },
-  "hash": "e763f108fd828acd29416b416f8ff9f3daab713c5e7ed56bd95670c996f55f48"
+  "hash": "4f9550f5ef00eba6e6ca7f1d838695b1b912d43849c0837588617f0e258ec304"
 }

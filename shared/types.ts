@@ -24,15 +24,27 @@ export type UpsertClaudeTokenRequest = {
  */
 token: string, };
 
-export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, creator_user_id: string | null, min_approvals_required: number, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, creator_user_id: string | null, min_approvals_required: number, 
+/**
+ * Hex color for the project header (e.g., "#FF5733")
+ */
+color: string | null, created_at: Date, updated_at: Date, };
 
 export type ProjectCreator = { id: string, username: string, avatar_url: string | null, };
 
-export type ProjectWithCreator = { creator: ProjectCreator | null, id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, creator_user_id: string | null, min_approvals_required: number, created_at: Date, updated_at: Date, };
+export type ProjectWithCreator = { creator: ProjectCreator | null, id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, creator_user_id: string | null, min_approvals_required: number, 
+/**
+ * Hex color for the project header (e.g., "#FF5733")
+ */
+color: string | null, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
-export type UpdateProject = { name: string | null, min_approvals_required: number | null, };
+export type UpdateProject = { name: string | null, min_approvals_required: number | null, 
+/**
+ * Hex color for the project header (e.g., "#FF5733"). Use null to clear the color.
+ */
+color: string | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, 
 /**

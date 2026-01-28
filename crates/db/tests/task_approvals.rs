@@ -39,7 +39,7 @@ async fn create_test_project(pool: &SqlitePool, creator_id: Option<Uuid>) -> Pro
         r#"INSERT INTO projects (id, name, creator_user_id)
            VALUES ($1, $2, $3)
            RETURNING id, name, default_agent_working_dir, remote_project_id,
-                     creator_user_id, min_approvals_required, created_at, updated_at"#,
+                     creator_user_id, min_approvals_required, color, created_at, updated_at"#,
     )
     .bind(id)
     .bind("Test Project")

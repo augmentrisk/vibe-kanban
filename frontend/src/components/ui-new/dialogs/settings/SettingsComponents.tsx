@@ -213,6 +213,96 @@ export function SettingsTextarea({
   );
 }
 
+// Predefined project colors
+const PROJECT_COLORS = [
+  '#E57373', // Red
+  '#F06292', // Pink
+  '#BA68C8', // Purple
+  '#9575CD', // Deep Purple
+  '#7986CB', // Indigo
+  '#64B5F6', // Blue
+  '#4FC3F7', // Light Blue
+  '#4DD0E1', // Cyan
+  '#4DB6AC', // Teal
+  '#81C784', // Green
+  '#AED581', // Light Green
+  '#DCE775', // Lime
+  '#FFF176', // Yellow
+  '#FFD54F', // Amber
+  '#FFB74D', // Orange
+  '#FF8A65', // Deep Orange
+];
+
+// SettingsColorPicker - A color picker for project header colors
+export function SettingsColorPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string | null;
+  onChange: (value: string | null) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2 items-center">
+      {/* Clear button */}
+      <button
+        type="button"
+        onClick={() => onChange(null)}
+        disabled={disabled}
+        className={cn(
+          'w-8 h-8 rounded-sm border-2 flex items-center justify-center',
+          'bg-secondary hover:bg-tertiary transition-colors',
+          value === null
+            ? 'border-brand ring-2 ring-brand/30'
+            : 'border-border',
+          disabled && 'opacity-50 cursor-not-allowed'
+        )}
+        title="No color (default)"
+      >
+        <span className="text-low text-xs">∅</span>
+      </button>
+
+      {/* Color swatches */}
+      {PROJECT_COLORS.map((color) => (
+        <button
+          key={color}
+          type="button"
+          onClick={() => onChange(color)}
+          disabled={disabled}
+          className={cn(
+            'w-8 h-8 rounded-sm border-2 transition-all',
+            value === color
+              ? 'border-brand ring-2 ring-brand/30 scale-110'
+              : 'border-border hover:border-normal hover:scale-105',
+            disabled && 'opacity-50 cursor-not-allowed'
+          )}
+          style={{ backgroundColor: color }}
+          title={color}
+        />
+      ))}
+
+      {/* Custom color input */}
+      <div className="flex items-center gap-1 ml-2">
+        <input
+          type="color"
+          value={value || '#808080'}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className={cn(
+            'w-8 h-8 rounded-sm border border-border cursor-pointer',
+            disabled && 'opacity-50 cursor-not-allowed'
+          )}
+          title="Custom color"
+        />
+        {value && !PROJECT_COLORS.includes(value) && (
+          <span className="text-xs text-low font-mono">{value}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // SettingsSaveBar - A sticky save bar for unsaved changes
 export function SettingsSaveBar({
   show,

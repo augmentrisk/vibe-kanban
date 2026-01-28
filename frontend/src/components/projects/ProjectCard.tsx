@@ -108,14 +108,32 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
 
   return (
     <Card
-      className={`hover:shadow-md transition-shadow cursor-pointer focus:ring-2 focus:ring-primary outline-none border`}
+      className={`hover:shadow-md transition-shadow cursor-pointer focus:ring-2 focus:ring-primary outline-none border relative overflow-hidden`}
       onClick={() => navigate(`/projects/${project.id}/tasks`)}
       tabIndex={isFocused ? 0 : -1}
       ref={ref}
     >
+      {/* Project color indicator */}
+      {project.color && (
+        <div
+          className="absolute top-0 left-0 right-0 h-1"
+          style={{ backgroundColor: project.color }}
+          aria-hidden="true"
+        />
+      )}
       <CardHeader>
         <div className="flex items-start justify-between">
-          <CardTitle className="text-lg">{project.name}</CardTitle>
+          <div className="flex items-center gap-2">
+            {/* Color swatch indicator */}
+            {project.color && (
+              <div
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: project.color }}
+                aria-hidden="true"
+              />
+            )}
+            <CardTitle className="text-lg">{project.name}</CardTitle>
+          </div>
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>

@@ -31,11 +31,13 @@ import type { Project, Repo, UpdateProject } from 'shared/types';
 
 interface ProjectFormState {
   name: string;
+  color: string | null;
 }
 
 function projectToFormState(project: Project): ProjectFormState {
   return {
     name: project.name,
+    color: project.color,
   };
 }
 
@@ -293,6 +295,7 @@ export function ProjectSettings() {
       const updateData: UpdateProject = {
         name: draft.name.trim(),
         min_approvals_required: null,
+        color: draft.color,
       };
 
       updateProject.mutate({

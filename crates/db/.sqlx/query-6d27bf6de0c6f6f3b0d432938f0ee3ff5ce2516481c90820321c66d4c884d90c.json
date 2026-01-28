@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      creator_user_id as \"creator_user_id: Uuid\",\n                      min_approvals_required as \"min_approvals_required!: i64\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               ORDER BY created_at DESC",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      creator_user_id as \"creator_user_id: Uuid\",\n                      min_approvals_required as \"min_approvals_required!: i64\",\n                      color,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE rowid = $1",
   "describe": {
     "columns": [
       {
@@ -34,18 +34,23 @@
         "type_info": "Integer"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "color",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 8,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       true,
@@ -54,9 +59,10 @@
       true,
       true,
       false,
+      true,
       false,
       false
     ]
   },
-  "hash": "4fe13d736ca32c7b7c66bc3ceb8714e7b4ae2308af40d901c8deffddd4585639"
+  "hash": "6d27bf6de0c6f6f3b0d432938f0ee3ff5ce2516481c90820321c66d4c884d90c"
 }

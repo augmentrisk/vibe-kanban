@@ -26,6 +26,8 @@ pub struct Project {
     pub creator_user_id: Option<Uuid>,
     #[ts(type = "number")]
     pub min_approvals_required: i64,
+    /// Hex color for the project header (e.g., "#FF5733")
+    pub color: Option<String>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -78,6 +80,8 @@ pub struct UpdateProject {
     pub name: Option<String>,
     #[ts(type = "number | null")]
     pub min_approvals_required: Option<i64>,
+    /// Hex color for the project header (e.g., "#FF5733"). Use null to clear the color.
+    pub color: Option<String>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -113,6 +117,7 @@ impl Project {
                       remote_project_id as "remote_project_id: Uuid",
                       creator_user_id as "creator_user_id: Uuid",
                       min_approvals_required as "min_approvals_required!: i64",
+                      color,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -132,6 +137,7 @@ impl Project {
                    p.remote_project_id as "remote_project_id: Uuid",
                    p.creator_user_id as "creator_user_id: Uuid",
                    p.min_approvals_required as "min_approvals_required!: i64",
+                   p.color,
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -157,6 +163,7 @@ impl Project {
                       remote_project_id as "remote_project_id: Uuid",
                       creator_user_id as "creator_user_id: Uuid",
                       min_approvals_required as "min_approvals_required!: i64",
+                      color,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -176,6 +183,7 @@ impl Project {
                       remote_project_id as "remote_project_id: Uuid",
                       creator_user_id as "creator_user_id: Uuid",
                       min_approvals_required as "min_approvals_required!: i64",
+                      color,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -198,6 +206,7 @@ impl Project {
                       remote_project_id as "remote_project_id: Uuid",
                       creator_user_id as "creator_user_id: Uuid",
                       min_approvals_required as "min_approvals_required!: i64",
+                      color,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -230,6 +239,7 @@ impl Project {
                           remote_project_id as "remote_project_id: Uuid",
                           creator_user_id as "creator_user_id: Uuid",
                           min_approvals_required as "min_approvals_required!: i64",
+                          color,
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
@@ -253,11 +263,18 @@ impl Project {
         let min_approvals_required = payload
             .min_approvals_required
             .unwrap_or(existing.min_approvals_required);
+        // Color can be explicitly set to None to clear it, or Some to set it
+        // If payload.color is None, keep existing; if Some(value), use value (including empty string to clear)
+        let color = if payload.color.is_some() {
+            payload.color.clone()
+        } else {
+            existing.color
+        };
 
         sqlx::query_as!(
             Project,
             r#"UPDATE projects
-               SET name = $2, min_approvals_required = $3
+               SET name = $2, min_approvals_required = $3, color = $4
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
@@ -265,11 +282,13 @@ impl Project {
                          remote_project_id as "remote_project_id: Uuid",
                          creator_user_id as "creator_user_id: Uuid",
                          min_approvals_required as "min_approvals_required!: i64",
+                         color,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             name,
             min_approvals_required,
+            color,
         )
         .fetch_one(pool)
         .await

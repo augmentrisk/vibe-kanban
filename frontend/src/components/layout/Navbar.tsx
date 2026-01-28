@@ -138,8 +138,19 @@ export function Navbar() {
 
   const isOAuthLoggedIn = loginStatus?.status === 'loggedin';
 
+  // Get the project color for the header accent
+  const projectColor = project?.color || null;
+
   return (
-    <div className="border-b bg-background">
+    <div className="border-b bg-background relative">
+      {/* Project color indicator bar */}
+      {projectColor && (
+        <div
+          className="absolute top-0 left-0 right-0 h-1"
+          style={{ backgroundColor: projectColor }}
+          aria-hidden="true"
+        />
+      )}
       <div className="w-full px-3">
         <div className="flex items-center h-12 py-2">
           <div className="flex-1 flex items-center">

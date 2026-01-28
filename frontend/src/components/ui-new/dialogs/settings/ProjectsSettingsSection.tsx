@@ -22,16 +22,19 @@ import {
   SettingsCard,
   SettingsField,
   SettingsInput,
+  SettingsColorPicker,
   SettingsSaveBar,
 } from './SettingsComponents';
 
 interface ProjectFormState {
   name: string;
+  color: string | null;
 }
 
 function projectToFormState(project: Project): ProjectFormState {
   return {
     name: project.name,
+    color: project.color,
   };
 }
 
@@ -227,6 +230,7 @@ export function ProjectsSettingsSection() {
       const updateData: UpdateProject = {
         name: draft.name.trim(),
         min_approvals_required: null,
+        color: draft.color,
       };
 
       updateProject.mutate({
@@ -348,6 +352,20 @@ export function ProjectsSettingsSection() {
                 value={draft.name}
                 onChange={(value) => updateDraft({ name: value })}
                 placeholder={t('settings.projects.general.name.placeholder')}
+              />
+            </SettingsField>
+            <SettingsField
+              label={t('settings.projects.general.color.label', {
+                defaultValue: 'Header Color',
+              })}
+              description={t('settings.projects.general.color.helper', {
+                defaultValue:
+                  'Choose a color to help identify this project at a glance',
+              })}
+            >
+              <SettingsColorPicker
+                value={draft.color}
+                onChange={(value) => updateDraft({ color: value })}
               />
             </SettingsField>
           </SettingsCard>

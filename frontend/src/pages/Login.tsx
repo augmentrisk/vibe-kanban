@@ -34,6 +34,9 @@ export function Login() {
               {t('localAuth.appName')}
             </h1>
             <p className="text-muted-foreground">{t('localAuth.tagline')}</p>
+            <p className="text-sm text-muted-foreground italic mt-1">
+              {t('localAuth.appTagline')}
+            </p>
           </div>
 
           <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
@@ -82,6 +85,9 @@ export function Login() {
             {t('localAuth.appName')}
           </h1>
           <p className="text-muted-foreground">{t('localAuth.tagline')}</p>
+          <p className="text-sm text-muted-foreground italic mt-1">
+            {t('localAuth.appTagline')}
+          </p>
         </div>
 
         <div className="bg-card rounded-lg border border-border p-6 shadow-sm">

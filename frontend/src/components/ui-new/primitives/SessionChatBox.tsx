@@ -12,11 +12,12 @@ import {
   WarningIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import type {
-  SessionWithInitiator,
-  BaseCodingAgent,
-  TodoItem,
-  TokenUsageInfo,
+import {
+  BaseAgentCapability,
+  type SessionWithInitiator,
+  type BaseCodingAgent,
+  type TodoItem,
+  type TokenUsageInfo,
 } from 'shared/types';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { formatDateShortWithTime } from '@/utils/date';
@@ -49,6 +50,7 @@ import {
 import { type ExecutorProps } from './CreateChatBox';
 import { ContextUsageGauge } from './ContextUsageGauge';
 import { TodoProgressPopup } from './TodoProgressPopup';
+import { useUserSystem } from '@/components/ConfigProvider';
 
 // Re-export shared types
 export type { EditorProps, VariantProps } from './ChatBoxBase';
@@ -194,6 +196,10 @@ export function SessionChatBox({
 }: SessionChatBoxProps) {
   const { t } = useTranslation('tasks');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { capabilities } = useUserSystem();
+
+  const supportsContextUsage =
+    agent && capabilities?.[agent]?.includes(BaseAgentCapability.CONTEXT_USAGE);
 
   // Determine if in feedback mode, edit mode, or approval mode
   const isInFeedbackMode = feedbackMode?.isActive ?? false;
@@ -653,7 +659,9 @@ export function SessionChatBox({
           )}
           {/* Todo progress popup - always rendered, disabled when no todos */}
           <TodoProgressPopup todos={todos ?? []} />
-          <ContextUsageGauge tokenUsageInfo={tokenUsageInfo} />
+          {supportsContextUsage && (
+            <ContextUsageGauge tokenUsageInfo={tokenUsageInfo} />
+          )}
           <ToolbarDropdown
             label={sessionLabel}
             disabled={isInFeedbackMode || isInEditMode || isInApprovalMode}

@@ -15,3 +15,34 @@ export function formatFileSize(bytes: bigint | null | undefined): string {
   if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB`;
   return `${(num / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+/**
+ * Copy text to clipboard. Uses the Clipboard API when available (HTTPS),
+ * falls back to execCommand('copy') for HTTP contexts (e.g. Tailscale).
+ */
+export async function copyToClipboard(text: string): Promise<boolean> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Clipboard API can throw even when present (e.g. permissions denied).
+      // Fall through to legacy fallback.
+    }
+  }
+
+  // Legacy fallback for non-secure contexts (HTTP)
+  try {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return ok;
+  } catch {
+    return false;
+  }
+}

@@ -21,6 +21,7 @@ import { useLogStream } from '@/hooks/useLogStream';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialog';
+import { copyToClipboard } from '@/lib/utils';
 
 const MIN_RESPONSIVE_WIDTH = 320;
 const MIN_RESPONSIVE_HEIGHT = 480;
@@ -330,7 +331,7 @@ export function PreviewBrowserContainer({
 
   const handleCopyUrl = useCallback(async () => {
     if (effectiveUrl) {
-      await navigator.clipboard.writeText(effectiveUrl);
+      await copyToClipboard(effectiveUrl);
     }
   }, [effectiveUrl]);
 

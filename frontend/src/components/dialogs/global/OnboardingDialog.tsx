@@ -24,6 +24,7 @@ import {
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal, type NoProps } from '@/lib/modals';
 import { claudeTokensApi } from '@/lib/api';
+import { copyToClipboard } from '@/lib/utils';
 
 export type OnboardingResult = {
   tokenConfigured: boolean;
@@ -38,7 +39,7 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
   const [copied, setCopied] = useState(false);
 
   const copyCommand = async () => {
-    await navigator.clipboard.writeText('claude setup-token');
+    await copyToClipboard('claude setup-token');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

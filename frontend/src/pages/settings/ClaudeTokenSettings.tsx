@@ -22,6 +22,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { claudeTokensApi } from '@/lib/api';
+import { copyToClipboard } from '@/lib/utils';
 import type { ClaudeOAuthTokenStatus, UserTokenStatus } from 'shared/types';
 
 export function ClaudeTokenSettings() {
@@ -118,7 +119,7 @@ export function ClaudeTokenSettings() {
   };
 
   const copyCommand = () => {
-    navigator.clipboard.writeText('claude setup-token');
+    copyToClipboard('claude setup-token');
   };
 
   if (loading) {

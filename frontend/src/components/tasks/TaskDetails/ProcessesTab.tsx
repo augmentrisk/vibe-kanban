@@ -10,6 +10,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { executionProcessesApi } from '@/lib/api.ts';
+import { copyToClipboard } from '@/lib/utils';
 import { ProfileVariantBadge } from '@/components/common/ProfileVariantBadge.tsx';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import { useLogStream } from '@/hooks/useLogStream';
@@ -55,12 +56,10 @@ function ProcessesTab({ sessionId }: ProcessesTabProps) {
     if (logs.length === 0) return;
 
     const text = logs.map((entry) => entry.content).join('\n');
-    try {
-      await navigator.clipboard.writeText(text);
+    const ok = await copyToClipboard(text);
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.warn('Copy to clipboard failed:', err);
     }
   }, [logs]);
 

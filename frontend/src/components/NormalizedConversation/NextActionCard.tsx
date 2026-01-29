@@ -15,6 +15,7 @@ import { ViewProcessesDialog } from '@/components/dialogs/tasks/ViewProcessesDia
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import { GitActionsDialog } from '@/components/dialogs/tasks/GitActionsDialog';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
+import { copyToClipboard } from '@/lib/utils';
 import { useDiffSummary } from '@/hooks/useDiffSummary';
 import { useDevServer } from '@/hooks/useDevServer';
 import { useHasDevServerScript } from '@/hooks/useHasDevServerScript';
@@ -90,12 +91,10 @@ export function NextActionCard({
   const handleCopy = useCallback(async () => {
     if (!containerRef) return;
 
-    try {
-      await navigator.clipboard.writeText(containerRef);
+    const ok = await copyToClipboard(containerRef);
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.warn('Copy to clipboard failed:', err);
     }
   }, [containerRef]);
 

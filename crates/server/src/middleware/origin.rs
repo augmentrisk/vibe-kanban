@@ -137,11 +137,7 @@ fn is_private_or_local_host(host: &str) -> bool {
         return false;
     };
     match ip {
-        IpAddr::V4(v4) => {
-            v4.is_loopback()
-                || v4.is_private()
-                || v4.is_link_local()
-        }
+        IpAddr::V4(v4) => v4.is_loopback() || v4.is_private() || v4.is_link_local(),
         IpAddr::V6(v6) => {
             v6.is_loopback()
                 // fe80::/10 (link-local)
@@ -289,7 +285,10 @@ mod tests {
         ];
         for (origin, host) in private_origins {
             let mut req = make_request(Some(origin), Some(host));
-            assert!(validate_origin(&mut req).is_ok(), "expected {origin} to be allowed");
+            assert!(
+                validate_origin(&mut req).is_ok(),
+                "expected {origin} to be allowed"
+            );
         }
     }
 

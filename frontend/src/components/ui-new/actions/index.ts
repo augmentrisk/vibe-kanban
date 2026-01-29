@@ -44,6 +44,7 @@ import {
 } from '@/stores/useUiPreferencesStore';
 
 import { attemptsApi, tasksApi, repoApi } from '@/lib/api';
+import { copyToClipboard } from '@/lib/utils';
 import { attemptKeys } from '@/hooks/useAttempt';
 import { taskKeys } from '@/hooks/useTask';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
@@ -672,7 +673,7 @@ export const Actions = {
     isVisible: (ctx) => ctx.hasWorkspace,
     execute: async (ctx) => {
       if (!ctx.containerRef) return;
-      await navigator.clipboard.writeText(ctx.containerRef);
+      await copyToClipboard(ctx.containerRef);
     },
   },
 
@@ -934,7 +935,7 @@ export const Actions = {
       try {
         const repo = await repoApi.getById(repoId);
         if (repo?.path) {
-          await navigator.clipboard.writeText(repo.path);
+          await copyToClipboard(repo.path);
         }
       } catch (err) {
         console.error('Failed to copy repo path:', err);

@@ -12,6 +12,7 @@ import { ClickToComponentListener } from '@/utils/previewBridge';
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 import { Alert } from '@/components/ui/alert';
 import { useProject } from '@/contexts/ProjectContext';
+import { copyToClipboard } from '@/lib/utils';
 import { DevServerLogsView } from '@/components/tasks/TaskDetails/preview/DevServerLogsView';
 import { PreviewToolbar } from '@/components/tasks/TaskDetails/preview/PreviewToolbar';
 import { NoServerContent } from '@/components/tasks/TaskDetails/preview/NoServerContent';
@@ -73,7 +74,7 @@ export function PreviewPanel() {
 
   const handleCopyUrl = async () => {
     if (effectiveUrl) {
-      await navigator.clipboard.writeText(effectiveUrl);
+      await copyToClipboard(effectiveUrl);
     }
   };
 

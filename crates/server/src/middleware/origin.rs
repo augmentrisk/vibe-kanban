@@ -1,4 +1,7 @@
-use std::{net::IpAddr, sync::OnceLock};
+use std::{
+    net::{IpAddr, Ipv4Addr},
+    sync::OnceLock,
+};
 
 use axum::{
     body::Body,
@@ -105,10 +108,21 @@ fn forbidden() -> Response {
 }
 
 fn origin_matches_host(origin: &str, host: &str) -> bool {
-    origin
+    let origin_authority = origin
         .strip_prefix("http://")
-        .or_else(|| origin.strip_prefix("https://"))
-        .is_some_and(|rest| rest.eq_ignore_ascii_case(host))
+        .or_else(|| origin.strip_prefix("https://"));
+    let Some(rest) = origin_authority else {
+        return false;
+    };
+    // Exact match (host header includes port)
+    if rest.eq_ignore_ascii_case(host) {
+        return true;
+    }
+    // Handle reverse proxies (e.g. nginx $host) that strip the port from
+    // the Host header. In that case "10.0.1.242:3000" (origin) won't match
+    // "10.0.1.242" (host). Compare just the hostname portion.
+    let origin_host = rest.rsplit_once(':').map_or(rest, |(h, _)| h);
+    origin_host.eq_ignore_ascii_case(host)
 }
 
 fn normalize_host(host: &str) -> String {
@@ -128,6 +142,7 @@ fn normalize_host(host: &str) -> String {
 
 /// Returns true if the host is localhost or a private/link-local network address.
 /// Private networks (RFC 1918): 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+/// CGNAT / Tailscale (RFC 6598): 100.64.0.0/10
 /// Link-local: 169.254.0.0/16, fe80::/10
 fn is_private_or_local_host(host: &str) -> bool {
     if host == "localhost" {
@@ -137,13 +152,20 @@ fn is_private_or_local_host(host: &str) -> bool {
         return false;
     };
     match ip {
-        IpAddr::V4(v4) => v4.is_loopback() || v4.is_private() || v4.is_link_local(),
+        IpAddr::V4(v4) => v4.is_loopback() || v4.is_private() || v4.is_link_local() || is_cgnat(v4),
         IpAddr::V6(v6) => {
             v6.is_loopback()
                 // fe80::/10 (link-local)
                 || (v6.segments()[0] & 0xffc0) == 0xfe80
         }
     }
+}
+
+/// Returns true if the address is in the CGNAT range 100.64.0.0/10 (RFC 6598).
+/// This range is used by Tailscale (100.x.x.x) and carrier-grade NAT deployments.
+fn is_cgnat(addr: Ipv4Addr) -> bool {
+    let octets = addr.octets();
+    octets[0] == 100 && (octets[1] & 0xC0) == 64
 }
 
 fn default_port(https: bool) -> u16 {
@@ -212,6 +234,24 @@ mod tests {
         for (origin, host) in cases {
             let mut req = make_request(Some(origin), Some(host));
             assert!(validate_origin(&mut req).is_ok(), "{origin} vs {host}");
+        }
+    }
+
+    #[test]
+    fn proxy_stripped_port_allows_request() {
+        // Reverse proxies like nginx with `proxy_set_header Host $host` strip
+        // the port from the Host header. The origin still has the port.
+        let cases = [
+            ("http://10.0.1.242:3000", "10.0.1.242"),
+            ("http://example.com:8080", "example.com"),
+            ("https://example.com:443", "example.com"),
+        ];
+        for (origin, host) in cases {
+            let mut req = make_request(Some(origin), Some(host));
+            assert!(
+                validate_origin(&mut req).is_ok(),
+                "{origin} vs {host} should be allowed (proxy port-strip)"
+            );
         }
     }
 
@@ -290,6 +330,41 @@ mod tests {
                 "expected {origin} to be allowed"
             );
         }
+    }
+
+    #[test]
+    fn tailscale_cgnat_origins_allowed() {
+        // Tailscale uses 100.64.0.0/10 (CGNAT / RFC 6598)
+        let tailscale_origins = [
+            ("http://100.64.0.1:3000", "some-host:3000"),
+            ("http://100.100.100.100:3000", "other-host:3000"),
+            ("http://100.127.255.255:3000", "whatever:3000"),
+        ];
+        for (origin, host) in tailscale_origins {
+            let mut req = make_request(Some(origin), Some(host));
+            assert!(
+                validate_origin(&mut req).is_ok(),
+                "expected Tailscale/CGNAT {origin} to be allowed"
+            );
+        }
+
+        // 100.128.0.0 is outside the /10 range — should be forbidden
+        let mut req = make_request(Some("http://100.128.0.1:3000"), Some("other-host:3000"));
+        assert!(
+            is_forbidden(validate_origin(&mut req)),
+            "100.128.x.x is outside CGNAT range"
+        );
+    }
+
+    #[test]
+    fn cgnat_range_boundary_check() {
+        // Verify the CGNAT range boundaries (100.64.0.0 - 100.127.255.255)
+        assert!(is_cgnat(Ipv4Addr::new(100, 64, 0, 0)));
+        assert!(is_cgnat(Ipv4Addr::new(100, 127, 255, 255)));
+        assert!(!is_cgnat(Ipv4Addr::new(100, 63, 255, 255)));
+        assert!(!is_cgnat(Ipv4Addr::new(100, 128, 0, 0)));
+        assert!(!is_cgnat(Ipv4Addr::new(99, 64, 0, 0)));
+        assert!(!is_cgnat(Ipv4Addr::new(101, 64, 0, 0)));
     }
 
     #[test]

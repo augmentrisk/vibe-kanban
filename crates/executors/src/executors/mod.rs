@@ -3,6 +3,7 @@ use std::{path::Path, sync::Arc};
 use async_trait::async_trait;
 use command_group::AsyncGroupChild;
 use enum_dispatch::enum_dispatch;
+use futures::stream::BoxStream;
 use futures_io::Error as FuturesIoError;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -40,12 +41,22 @@ pub mod qa_mock;
 pub mod qwen;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+pub struct SlashCommandDescription {
+    /// Command name without the leading slash, e.g. `help` for `/help`.
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[ts(use_ts_enum)]
 pub enum BaseAgentCapability {
     SessionFork,
     /// Agent requires a setup script before it can run (e.g., login, installation)
     SetupHelper,
+    /// Agent reports context/token usage information
+    ContextUsage,
 }
 
 #[derive(Debug, Error)]
@@ -161,16 +172,22 @@ impl CodingAgent {
 
     pub fn capabilities(&self) -> Vec<BaseAgentCapability> {
         match self {
-            Self::ClaudeCode(_)
-            | Self::Amp(_)
-            | Self::Gemini(_)
-            | Self::QwenCode(_)
-            | Self::Droid(_)
-            | Self::Opencode(_) => vec![BaseAgentCapability::SessionFork],
+            Self::ClaudeCode(_) => vec![
+                BaseAgentCapability::SessionFork,
+                BaseAgentCapability::ContextUsage,
+            ],
+            Self::Opencode(_) => vec![
+                BaseAgentCapability::SessionFork,
+                BaseAgentCapability::ContextUsage,
+            ],
             Self::Codex(_) => vec![
                 BaseAgentCapability::SessionFork,
                 BaseAgentCapability::SetupHelper,
+                BaseAgentCapability::ContextUsage,
             ],
+            Self::Amp(_) | Self::Gemini(_) | Self::QwenCode(_) | Self::Droid(_) => {
+                vec![BaseAgentCapability::SessionFork]
+            }
             Self::CursorAgent(_) => vec![BaseAgentCapability::SetupHelper],
             Self::Copilot(_) => vec![],
             #[cfg(feature = "qa-mode")]
@@ -202,17 +219,28 @@ impl AvailabilityInfo {
 pub trait StandardCodingAgentExecutor {
     fn use_approvals(&mut self, _approvals: Arc<dyn ExecutorApprovalService>) {}
 
+    /// Stub - slash commands feature not implemented in this fork
+    async fn available_slash_commands(
+        &self,
+        _workdir: &Path,
+    ) -> Result<BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        Ok(Box::pin(futures::stream::empty()))
+    }
+
     async fn spawn(
         &self,
         current_dir: &Path,
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError>;
+
+    /// Continue a session, optionally resetting to a specific message.
     async fn spawn_follow_up(
         &self,
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError>;
 
@@ -224,7 +252,10 @@ pub trait StandardCodingAgentExecutor {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         match session_id {
-            Some(id) => self.spawn_follow_up(current_dir, prompt, id, env).await,
+            Some(id) => {
+                self.spawn_follow_up(current_dir, prompt, id, None, env)
+                    .await
+            }
             None => self.spawn(current_dir, prompt, env).await,
         }
     }

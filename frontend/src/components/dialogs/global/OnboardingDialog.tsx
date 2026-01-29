@@ -38,7 +38,11 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
   const [copied, setCopied] = useState(false);
 
   const copyCommand = async () => {
-    await navigator.clipboard.writeText('claude setup-token');
+    try {
+      await navigator.clipboard.writeText('claude setup-token');
+    } catch {
+      // Clipboard API unavailable (e.g., non-HTTPS context) — ignore silently
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

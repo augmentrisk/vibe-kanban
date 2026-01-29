@@ -57,6 +57,14 @@ pub fn validate_origin<B>(req: &mut Request<B>) -> Result<(), Response> {
         return Err(forbidden());
     };
 
+    // Allow requests from private/local network origins.
+    // This app is deployed on private LANs (e.g., EC2 instances accessed via
+    // private IPs like 10.x.x.x). The origin and host headers may not match
+    // exactly when accessed via different network interfaces.
+    if is_private_or_local_host(&origin_key.host) {
+        return Ok(());
+    }
+
     if allowed_origins()
         .iter()
         .any(|allowed| allowed == &origin_key)
@@ -116,6 +124,30 @@ fn normalize_host(host: &str) -> String {
         return ip.to_string();
     }
     lower
+}
+
+/// Returns true if the host is localhost or a private/link-local network address.
+/// Private networks (RFC 1918): 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+/// Link-local: 169.254.0.0/16, fe80::/10
+fn is_private_or_local_host(host: &str) -> bool {
+    if host == "localhost" {
+        return true;
+    }
+    let Ok(ip) = host.parse::<IpAddr>() else {
+        return false;
+    };
+    match ip {
+        IpAddr::V4(v4) => {
+            v4.is_loopback()
+                || v4.is_private()
+                || v4.is_link_local()
+        }
+        IpAddr::V6(v6) => {
+            v6.is_loopback()
+                // fe80::/10 (link-local)
+                || (v6.segments()[0] & 0xffc0) == 0xfe80
+        }
+    }
 }
 
 fn default_port(https: bool) -> u16 {
@@ -242,5 +274,29 @@ mod tests {
         // Explicit default port matches implicit
         let mut req = make_request(Some("http://example.com:80"), Some("example.com"));
         assert!(validate_origin(&mut req).is_ok());
+    }
+
+    #[test]
+    fn private_network_origins_allowed() {
+        // RFC 1918 private addresses should be allowed even if Host header differs
+        let private_origins = [
+            ("http://10.0.1.242:3000", "some-other-host:3000"),
+            ("http://10.0.0.1:3000", "localhost:3001"),
+            ("http://172.16.0.1:8080", "different-host:8080"),
+            ("http://172.31.255.255:3000", "whatever:3000"),
+            ("http://192.168.1.1:3000", "other:3000"),
+            ("http://192.168.0.100:5000", "host:5000"),
+        ];
+        for (origin, host) in private_origins {
+            let mut req = make_request(Some(origin), Some(host));
+            assert!(validate_origin(&mut req).is_ok(), "expected {origin} to be allowed");
+        }
+    }
+
+    #[test]
+    fn public_ip_cross_origin_still_forbidden() {
+        // Public IPs should still be checked normally
+        let mut req = make_request(Some("http://8.8.8.8:3000"), Some("other-host:3000"));
+        assert!(is_forbidden(validate_origin(&mut req)));
     }
 }

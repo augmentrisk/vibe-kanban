@@ -41,6 +41,7 @@ import { ClaudeTokenRequiredDialog } from '@/components/dialogs/global/ClaudeTok
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 import { claudeTokensApi } from '@/lib/api';
 import { useLocalAuth } from '@/contexts/LocalAuthContext';
+import NiceModal from '@ebay/nice-modal-react';
 
 // Design scope components
 import { LegacyDesignScope } from '@/components/legacy-design/LegacyDesignScope';
@@ -289,7 +290,9 @@ function App() {
               <HotkeysProvider
                 initiallyActiveScopes={['*', 'global', 'kanban']}
               >
-                <AppContent />
+                <NiceModal.Provider>
+                  <AppContent />
+                </NiceModal.Provider>
               </HotkeysProvider>
             </ProjectProvider>
           </ClickedElementsProvider>

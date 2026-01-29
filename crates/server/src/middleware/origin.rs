@@ -152,12 +152,7 @@ fn is_private_or_local_host(host: &str) -> bool {
         return false;
     };
     match ip {
-        IpAddr::V4(v4) => {
-            v4.is_loopback()
-                || v4.is_private()
-                || v4.is_link_local()
-                || is_cgnat(v4)
-        }
+        IpAddr::V4(v4) => v4.is_loopback() || v4.is_private() || v4.is_link_local() || is_cgnat(v4),
         IpAddr::V6(v6) => {
             v6.is_loopback()
                 // fe80::/10 (link-local)

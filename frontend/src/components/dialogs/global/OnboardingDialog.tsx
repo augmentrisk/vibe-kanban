@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -8,233 +9,154 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Sparkles, Code, ChevronDown, HandMetal } from 'lucide-react';
-import { BaseCodingAgent, EditorType } from 'shared/types';
-import type { EditorConfig, ExecutorProfileId } from 'shared/types';
-import { useUserSystem } from '@/components/ConfigProvider';
-
-import { toPrettyCase } from '@/utils/string';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  HandMetal,
+  Key,
+  Terminal,
+  Copy,
+  CheckCircle,
+  AlertTriangle,
+  Loader2,
+} from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal, type NoProps } from '@/lib/modals';
-import { useEditorAvailability } from '@/hooks/useEditorAvailability';
-import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndicator';
-import { useAgentAvailability } from '@/hooks/useAgentAvailability';
-import { AgentAvailabilityIndicator } from '@/components/AgentAvailabilityIndicator';
+import { claudeTokensApi } from '@/lib/api';
 
 export type OnboardingResult = {
-  profile: ExecutorProfileId;
-  editor: EditorConfig;
+  tokenConfigured: boolean;
 };
 
 const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
   const modal = useModal();
-  const { profiles, config } = useUserSystem();
+  const { t } = useTranslation(['settings', 'common']);
+  const [token, setToken] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  const [profile, setProfile] = useState<ExecutorProfileId>(
-    config?.executor_profile || {
-      executor: BaseCodingAgent.CLAUDE_CODE,
-      variant: null,
-    }
-  );
-  const [editorType, setEditorType] = useState<EditorType>(EditorType.VS_CODE);
-  const [customCommand, setCustomCommand] = useState<string>('');
-
-  const editorAvailability = useEditorAvailability(editorType);
-  const agentAvailability = useAgentAvailability(profile.executor);
-
-  const handleComplete = () => {
-    modal.resolve({
-      profile,
-      editor: {
-        editor_type: editorType,
-        custom_command:
-          editorType === EditorType.CUSTOM ? customCommand || null : null,
-        remote_ssh_host: null,
-        remote_ssh_user: null,
-      },
-    } as OnboardingResult);
+  const copyCommand = async () => {
+    await navigator.clipboard.writeText('claude setup-token');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const isValid =
-    editorType !== EditorType.CUSTOM ||
-    (editorType === EditorType.CUSTOM && customCommand.trim() !== '');
+  const handleComplete = async () => {
+    if (!token.trim()) {
+      setError(t('settings.claudeToken.errors.tokenRequired'));
+      return;
+    }
+
+    if (token.length < 20) {
+      setError(t('settings.claudeToken.errors.tokenTooShort'));
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await claudeTokensApi.upsertToken({ token });
+      modal.resolve({ tokenConfigured: true } as OnboardingResult);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : t('settings.claudeToken.errors.saveFailed')
+      );
+      setSaving(false);
+    }
+  };
 
   return (
     <Dialog open={modal.visible} uncloseable={true}>
       <DialogContent className="sm:max-w-[600px] space-y-4">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <HandMetal className="h-6 w-6 text-primary text-primary-foreground" />
+            <HandMetal className="h-6 w-6 text-primary" />
             <DialogTitle>Welcome to MultiVibe</DialogTitle>
           </div>
           <DialogDescription className="text-left pt-2">
-            Let's set up your coding preferences. You can always change these
-            later in Settings.
+            To get started, please configure your Claude Code Max subscription
+            token. This is required to run coding agents.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
-          <h2 className="text-xl flex items-center gap-2">
-            <Sparkles className="h-4 w-4" />
-            Choose Your Coding Agent
-          </h2>
-          <div className="space-y-2">
-            <Label htmlFor="profile">Default Agent</Label>
-            <div className="flex gap-2">
-              <Select
-                value={profile.executor}
-                onValueChange={(v) =>
-                  setProfile({ executor: v as BaseCodingAgent, variant: null })
-                }
-              >
-                <SelectTrigger id="profile" className="flex-1">
-                  <SelectValue placeholder="Select your preferred coding agent" />
-                </SelectTrigger>
-                <SelectContent>
-                  {profiles &&
-                    (Object.keys(profiles) as BaseCodingAgent[])
-                      .sort()
-                      .map((agent) => (
-                        <SelectItem key={agent} value={agent}>
-                          {agent}
-                        </SelectItem>
-                      ))}
-                </SelectContent>
-              </Select>
 
-              {/* Show variant selector if selected profile has variants */}
-              {(() => {
-                const selectedProfile = profiles?.[profile.executor];
-                const hasVariants =
-                  selectedProfile && Object.keys(selectedProfile).length > 0;
-
-                if (hasVariants) {
-                  return (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-24 px-2 flex items-center justify-between"
-                        >
-                          <span className="text-xs truncate flex-1 text-left">
-                            {profile.variant || 'DEFAULT'}
-                          </span>
-                          <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        {Object.keys(selectedProfile).map((variant) => (
-                          <DropdownMenuItem
-                            key={variant}
-                            onClick={() =>
-                              setProfile({
-                                ...profile,
-                                variant: variant,
-                              })
-                            }
-                            className={
-                              profile.variant === variant ? 'bg-accent' : ''
-                            }
-                          >
-                            {variant}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  );
-                } else if (selectedProfile) {
-                  // Show disabled button when profile exists but has no variants
-                  return (
-                    <Button
-                      variant="outline"
-                      className="w-24 px-2 flex items-center justify-between"
-                      disabled
-                    >
-                      <span className="text-xs truncate flex-1 text-left">
-                        Default
-                      </span>
-                    </Button>
-                  );
-                }
-                return null;
-              })()}
-            </div>
-            <AgentAvailabilityIndicator availability={agentAvailability} />
+        {/* Token Setup Instructions */}
+        <div className="space-y-3 bg-muted/50 p-4 rounded-lg">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Terminal className="h-4 w-4" />
+            {t('settings.claudeToken.instructions.title')}
           </div>
+          <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-2 ml-1">
+            <li>{t('settings.claudeToken.instructions.step1')}</li>
+            <li className="flex items-center gap-2 flex-wrap">
+              <span>{t('settings.claudeToken.instructions.step2Run')}</span>
+              <code className="bg-background px-2 py-1 rounded text-foreground font-mono text-xs">
+                claude setup-token
+              </code>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={copyCommand}
+                className="h-6 px-2"
+              >
+                {copied ? (
+                  <CheckCircle className="h-3 w-3 text-green-600" />
+                ) : (
+                  <Copy className="h-3 w-3" />
+                )}
+              </Button>
+            </li>
+            <li>{t('settings.claudeToken.instructions.step3')}</li>
+            <li>{t('settings.claudeToken.instructions.step4')}</li>
+          </ol>
+          <p className="text-xs text-muted-foreground mt-2">
+            <strong>{t('common:note')}:</strong>{' '}
+            {t('settings.claudeToken.instructions.note')}
+          </p>
         </div>
 
+        {/* Error Alert */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Token Input */}
         <div className="space-y-2">
-          <h2 className="text-xl flex items-center gap-2">
-            <Code className="h-4 w-4" />
-            Choose Your Code Editor
-          </h2>
-
-          <div className="space-y-2">
-            <Label htmlFor="editor">Preferred Editor</Label>
-            <Select
-              value={editorType}
-              onValueChange={(value: EditorType) => setEditorType(value)}
-            >
-              <SelectTrigger id="editor">
-                <SelectValue placeholder="Select your preferred editor" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.values(EditorType).map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {toPrettyCase(type)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Editor availability status indicator */}
-            {editorType !== EditorType.CUSTOM && (
-              <EditorAvailabilityIndicator availability={editorAvailability} />
-            )}
-
-            <p className="text-sm text-muted-foreground">
-              This editor will be used to open task attempts and project files.
-            </p>
-
-            {editorType === EditorType.CUSTOM && (
-              <div className="space-y-2">
-                <Label htmlFor="custom-command">Custom Command</Label>
-                <Input
-                  id="custom-command"
-                  placeholder="e.g., code, subl, vim"
-                  value={customCommand}
-                  onChange={(e) => setCustomCommand(e.target.value)}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Enter the command to run your custom editor. Use spaces for
-                  arguments (e.g., "code --wait").
-                </p>
-              </div>
-            )}
-          </div>
+          <Label htmlFor="claude-token">
+            <div className="flex items-center gap-2">
+              <Key className="h-4 w-4" />
+              {t('settings.claudeToken.form.label')}
+            </div>
+          </Label>
+          <Input
+            id="claude-token"
+            type="password"
+            placeholder={t('settings.claudeToken.form.placeholder')}
+            value={token}
+            onChange={(e) => {
+              setToken(e.target.value);
+              setError(null);
+            }}
+            className="font-mono"
+            autoFocus
+          />
         </div>
 
         <DialogFooter>
           <Button
             onClick={handleComplete}
-            disabled={!isValid}
+            disabled={saving || !token.trim()}
             className="w-full"
           >
-            Continue
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {saving ? t('common:saving') : 'Continue'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -118,15 +118,15 @@ function AppContent() {
         return;
       }
 
-      // 2) Onboarding - configure executor and editor
+      // 2) Onboarding - collect Claude token (agent/editor are hardcoded defaults)
       if (!config.onboarding_acknowledged) {
-        const result = await OnboardingDialog.show();
+        await OnboardingDialog.show();
         if (!cancelled) {
           await updateAndSaveConfig({
             onboarding_acknowledged: true,
-            executor_profile: result.profile,
-            editor: result.editor,
           });
+          // Refresh token status so step 3 sees the newly-saved token
+          await checkClaudeTokenStatus();
         }
         OnboardingDialog.hide();
         return;

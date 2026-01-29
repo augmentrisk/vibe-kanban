@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
 } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -84,6 +85,10 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       BaseAgentCapability[]
     > | null) || null;
 
+  // Sequence counter to prevent stale API responses from overwriting
+  // newer optimistic updates when rapid config saves occur
+  const configSaveSeqRef = useRef(0);
+
   // Sync language with i18n when config changes
   useEffect(() => {
     if (config?.language) {
@@ -122,19 +127,27 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       const newConfig = { ...config, ...updates };
       updateConfig(updates);
 
+      const seq = ++configSaveSeqRef.current;
+
       try {
         const saved = await configApi.saveConfig(newConfig);
-        queryClient.setQueryData<UserSystemInfo>(['user-system'], (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            config: saved,
-          };
-        });
+        // Only apply server response if no newer save has occurred,
+        // otherwise the stale response would overwrite a newer optimistic update
+        if (configSaveSeqRef.current === seq) {
+          queryClient.setQueryData<UserSystemInfo>(['user-system'], (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              config: saved,
+            };
+          });
+        }
         return true;
       } catch (err) {
         console.error('Error saving config:', err);
-        queryClient.invalidateQueries({ queryKey: ['user-system'] });
+        if (configSaveSeqRef.current === seq) {
+          queryClient.invalidateQueries({ queryKey: ['user-system'] });
+        }
         return false;
       }
     },

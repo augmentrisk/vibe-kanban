@@ -32,7 +32,13 @@ pub async fn launch_codex_review(
         commit_reminder,
         cancel.clone(),
     );
-    let rpc_peer = JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx, cancel);
+    let rpc_peer = JsonRpcPeer::spawn(
+        child_stdin,
+        child_stdout,
+        client.clone(),
+        exit_signal_tx,
+        cancel,
+    );
     client.connect(rpc_peer);
     client.initialize().await?;
     let auth_status = client.get_auth_status().await?;

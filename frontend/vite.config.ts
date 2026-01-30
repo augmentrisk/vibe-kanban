@@ -4,6 +4,7 @@ import { defineConfig, Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import fs from "fs";
+import { execSync } from "child_process";
 
 function executorSchemasPlugin(): Plugin {
   const VIRTUAL_ID = "virtual:executor-schemas";
@@ -49,7 +50,21 @@ export default schemas;
   };
 }
 
+// Resolve git SHA at build time: prefer VITE_GIT_SHA env var (set in Docker/CI),
+// fall back to reading from the local git repo.
+function getGitSha(): string {
+  if (process.env.VITE_GIT_SHA) return process.env.VITE_GIT_SHA;
+  try {
+    return execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim();
+  } catch {
+    return "unknown";
+  }
+}
+
 export default defineConfig({
+  define: {
+    __GIT_SHA__: JSON.stringify(getGitSha()),
+  },
   plugins: [
     react({
       babel: {

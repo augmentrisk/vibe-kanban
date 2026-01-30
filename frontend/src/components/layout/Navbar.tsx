@@ -157,6 +157,18 @@ export function Navbar() {
             <Link to="/projects">
               <Logo />
             </Link>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="hidden sm:inline-flex items-center ml-2 text-[10px] font-mono text-muted-foreground/60 select-all cursor-default">
+                    {__GIT_SHA__}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  Build: {__GIT_SHA__}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <a
               href="https://discord.gg/AC4nwVtJM3"
               target="_blank"

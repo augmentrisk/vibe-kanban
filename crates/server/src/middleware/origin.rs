@@ -46,6 +46,7 @@ pub fn validate_origin<B>(req: &mut Request<B>) -> Result<(), Response> {
     };
 
     if origin.eq_ignore_ascii_case("null") {
+        tracing::debug!("Rejecting request with null origin");
         return Err(forbidden());
     }
 
@@ -57,6 +58,7 @@ pub fn validate_origin<B>(req: &mut Request<B>) -> Result<(), Response> {
     }
 
     let Some(origin_key) = OriginKey::from_origin(origin) else {
+        tracing::debug!(origin, "Rejecting request with unparseable origin");
         return Err(forbidden());
     };
 
@@ -66,6 +68,20 @@ pub fn validate_origin<B>(req: &mut Request<B>) -> Result<(), Response> {
     // exactly when accessed via different network interfaces.
     if is_private_or_local_host(&origin_key.host) {
         return Ok(());
+    }
+
+    // Allow requests whose Host header resolves to a private/local address.
+    // When behind a reverse proxy (nginx, Cloudflare tunnel, ngrok, etc.) the
+    // proxy forwards requests to the backend on localhost or a private IP.
+    // The browser's Origin header will carry the public domain while the Host
+    // header (as seen by the backend) may be localhost or a private address.
+    // Since this app is a local deployment tool (not a public SaaS), trusting
+    // requests that arrive on a private interface is safe.
+    if let Some(host_val) = host {
+        let host_name = host_val.rsplit_once(':').map_or(host_val, |(h, _)| h);
+        if is_private_or_local_host(&normalize_host(host_name)) {
+            return Ok(());
+        }
     }
 
     if allowed_origins()
@@ -82,6 +98,11 @@ pub fn validate_origin<B>(req: &mut Request<B>) -> Result<(), Response> {
         return Ok(());
     }
 
+    tracing::warn!(
+        origin,
+        host = host.unwrap_or("<missing>"),
+        "Rejecting cross-origin request"
+    );
     Err(forbidden())
 }
 
@@ -371,6 +392,43 @@ mod tests {
     fn public_ip_cross_origin_still_forbidden() {
         // Public IPs should still be checked normally
         let mut req = make_request(Some("http://8.8.8.8:3000"), Some("other-host:3000"));
+        assert!(is_forbidden(validate_origin(&mut req)));
+    }
+
+    #[test]
+    fn public_origin_with_private_host_allowed() {
+        // When behind a reverse proxy (nginx, Cloudflare tunnel, ngrok), the
+        // browser Origin header carries the public domain while the backend
+        // sees the proxy's internal Host header (localhost or private IP).
+        let cases = [
+            // Cloudflare tunnel / ngrok → forwarded to localhost
+            ("https://my-app.example.com", "localhost:3000"),
+            ("https://my-app.example.com", "127.0.0.1:3000"),
+            ("https://my-app.example.com", "[::1]:3000"),
+            // nginx proxy → forwarded to private IP
+            ("https://my-app.example.com", "10.0.1.242:3000"),
+            ("https://my-app.example.com", "192.168.1.100:3000"),
+            ("https://my-app.example.com", "172.16.0.1:8080"),
+            // Host without port (nginx $host strips port)
+            ("https://my-app.example.com", "localhost"),
+            ("https://my-app.example.com", "127.0.0.1"),
+            ("https://my-app.example.com", "10.0.1.242"),
+            // Tailscale host
+            ("https://my-app.example.com", "100.100.100.100:3000"),
+        ];
+        for (origin, host) in cases {
+            let mut req = make_request(Some(origin), Some(host));
+            assert!(
+                validate_origin(&mut req).is_ok(),
+                "expected {origin} with host {host} to be allowed (proxy to private backend)"
+            );
+        }
+    }
+
+    #[test]
+    fn public_origin_with_public_host_still_forbidden() {
+        // If both origin and host are public and don't match, reject
+        let mut req = make_request(Some("https://evil.com"), Some("my-app.example.com:3000"));
         assert!(is_forbidden(validate_origin(&mut req)));
     }
 }

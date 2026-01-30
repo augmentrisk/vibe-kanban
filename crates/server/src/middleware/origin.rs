@@ -78,9 +78,7 @@ pub fn validate_origin<B>(req: &mut Request<B>) -> Result<(), Response> {
     // Since this app is a local deployment tool (not a public SaaS), trusting
     // requests that arrive on a private interface is safe.
     if let Some(host_val) = host {
-        let host_name = host_val
-            .rsplit_once(':')
-            .map_or(host_val, |(h, _)| h);
+        let host_name = host_val.rsplit_once(':').map_or(host_val, |(h, _)| h);
         if is_private_or_local_host(&normalize_host(host_name)) {
             return Ok(());
         }

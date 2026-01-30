@@ -34,7 +34,7 @@ use executors::{
     },
     approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
     env::{ExecutionEnv, RepoContext},
-    executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal, InterruptSender},
+    executors::{BaseCodingAgent, CancellationToken, ExecutorExitResult, ExecutorExitSignal},
     logs::{NormalizedEntryType, utils::patch::extract_normalized_entry_from_patch},
 };
 use futures::{FutureExt, TryStreamExt, stream::select};
@@ -68,8 +68,12 @@ use crate::{command, copy};
 pub struct LocalContainerService {
     db: DBService,
     child_store: Arc<RwLock<HashMap<Uuid, Arc<RwLock<AsyncGroupChild>>>>>,
-    interrupt_senders: Arc<RwLock<HashMap<Uuid, InterruptSender>>>,
+    cancellation_tokens: Arc<RwLock<HashMap<Uuid, CancellationToken>>>,
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
+    /// Tracks background tasks that stream logs to the database.
+    /// When stopping execution, we await these to ensure logs are fully persisted.
+    db_stream_handles: Arc<RwLock<HashMap<Uuid, JoinHandle<()>>>>,
+    exit_monitor_handles: Arc<RwLock<HashMap<Uuid, JoinHandle<()>>>>,
     config: Arc<RwLock<Config>>,
     git: GitService,
     image_service: ImageService,
@@ -95,14 +99,18 @@ impl LocalContainerService {
         claude_token_rotation: ClaudeTokenRotationService,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
-        let interrupt_senders = Arc::new(RwLock::new(HashMap::new()));
+        let cancellation_tokens = Arc::new(RwLock::new(HashMap::new()));
+        let db_stream_handles = Arc::new(RwLock::new(HashMap::new()));
+        let exit_monitor_handles = Arc::new(RwLock::new(HashMap::new()));
         let notification_service = NotificationService::new(config.clone());
 
         let container = LocalContainerService {
             db,
             child_store,
-            interrupt_senders,
+            cancellation_tokens,
             msg_stores,
+            db_stream_handles,
+            exit_monitor_handles,
             config,
             git,
             image_service,
@@ -133,13 +141,33 @@ impl LocalContainerService {
         map.remove(id);
     }
 
-    async fn add_interrupt_sender(&self, id: Uuid, sender: InterruptSender) {
-        let mut map = self.interrupt_senders.write().await;
-        map.insert(id, sender);
+    async fn add_cancellation_token(&self, id: Uuid, token: CancellationToken) {
+        let mut map = self.cancellation_tokens.write().await;
+        map.insert(id, token);
     }
 
-    async fn take_interrupt_sender(&self, id: &Uuid) -> Option<InterruptSender> {
-        let mut map = self.interrupt_senders.write().await;
+    async fn take_cancellation_token(&self, id: &Uuid) -> Option<CancellationToken> {
+        let mut map = self.cancellation_tokens.write().await;
+        map.remove(id)
+    }
+
+    async fn add_db_stream_handle(&self, id: Uuid, handle: JoinHandle<()>) {
+        let mut map = self.db_stream_handles.write().await;
+        map.insert(id, handle);
+    }
+
+    async fn take_db_stream_handle(&self, id: &Uuid) -> Option<JoinHandle<()>> {
+        let mut map = self.db_stream_handles.write().await;
+        map.remove(id)
+    }
+
+    async fn add_exit_monitor_handle(&self, id: Uuid, handle: JoinHandle<()>) {
+        let mut map = self.exit_monitor_handles.write().await;
+        map.insert(id, handle);
+    }
+
+    async fn take_exit_monitor_handle(&self, id: &Uuid) -> Option<JoinHandle<()>> {
+        let mut map = self.exit_monitor_handles.write().await;
         map.remove(id)
     }
 
@@ -180,6 +208,13 @@ impl LocalContainerService {
     }
 
     pub async fn cleanup_expired_workspaces(db: &DBService) -> Result<(), DeploymentError> {
+        if std::env::var("DISABLE_WORKTREE_CLEANUP").is_ok() {
+            tracing::info!(
+                "Expired workspace cleanup is disabled via DISABLE_WORKTREE_CLEANUP environment variable"
+            );
+            return Ok(());
+        }
+
         let expired_workspaces = Workspace::find_expired_for_cleanup(&db.pool).await?;
         if expired_workspaces.is_empty() {
             tracing::debug!("No expired workspaces found");
@@ -626,18 +661,13 @@ impl LocalContainerService {
             // capture the HEAD OID as the definitive "after" state (best-effort).
             container.update_after_head_commits(exec_id).await;
 
-            // Cleanup msg store
+            // Wait for DB persistence to complete before cleaning up MsgStore
+            let db_stream_handle = container.take_db_stream_handle(&exec_id).await;
             if let Some(msg_arc) = msg_stores.write().await.remove(&exec_id) {
                 msg_arc.push_finished();
-                tokio::time::sleep(Duration::from_millis(50)).await; // Wait for the finish message to propogate
-                match Arc::try_unwrap(msg_arc) {
-                    Ok(inner) => drop(inner),
-                    Err(arc) => tracing::error!(
-                        "There are still {} strong Arcs to MsgStore for {}",
-                        Arc::strong_count(&arc),
-                        exec_id
-                    ),
-                }
+            }
+            if let Some(handle) = db_stream_handle {
+                let _ = tokio::time::timeout(Duration::from_secs(5), handle).await;
             }
 
             // Cleanup child handle
@@ -900,12 +930,9 @@ impl LocalContainerService {
             .await?;
         }
 
-        // Get latest agent session ID for session continuity (from coding agent turns)
-        let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(
-            &self.db.pool,
-            ctx.session.id,
-        )
-        .await?;
+        // Get latest agent turn for session continuity (from coding agent turns)
+        let latest_session_info =
+            CodingAgentTurn::find_latest_session_info(&self.db.pool, ctx.session.id).await?;
 
         let repos =
             WorkspaceRepo::find_repos_for_workspace(&self.db.pool, ctx.workspace.id).await?;
@@ -918,10 +945,11 @@ impl LocalContainerService {
             .filter(|dir| !dir.is_empty())
             .cloned();
 
-        let action_type = if let Some(agent_session_id) = latest_agent_session_id {
+        let action_type = if let Some(info) = latest_session_info {
             ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
                 prompt: queued_data.message.clone(),
-                session_id: agent_session_id,
+                session_id: info.session_id,
+                reset_to_message_id: None,
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir: working_dir.clone(),
             })
@@ -974,6 +1002,14 @@ impl ContainerService for LocalContainerService {
 
     fn notification_service(&self) -> &NotificationService {
         &self.notification_service
+    }
+
+    async fn store_db_stream_handle(&self, id: Uuid, handle: JoinHandle<()>) {
+        self.add_db_stream_handle(id, handle).await;
+    }
+
+    async fn take_db_stream_handle(&self, id: &Uuid) -> Option<JoinHandle<()>> {
+        LocalContainerService::take_db_stream_handle(self, id).await
     }
 
     async fn git_branch_prefix(&self) -> String {
@@ -1222,14 +1258,15 @@ impl ContainerService for LocalContainerService {
         self.add_child_to_store(execution_process.id, spawned.child)
             .await;
 
-        // Store interrupt sender for graceful shutdown
-        if let Some(interrupt_sender) = spawned.interrupt_sender {
-            self.add_interrupt_sender(execution_process.id, interrupt_sender)
+        // Store cancellation token for graceful shutdown
+        if let Some(cancel) = spawned.cancel {
+            self.add_cancellation_token(execution_process.id, cancel)
                 .await;
         }
 
         // Spawn unified exit monitor: watches OS exit and optional executor signal
-        let _hn = self.spawn_exit_monitor(&execution_process.id, spawned.exit_signal);
+        let hn = self.spawn_exit_monitor(&execution_process.id, spawned.exit_signal);
+        self.add_exit_monitor_handle(execution_process.id, hn).await;
 
         Ok(())
     }
@@ -1254,37 +1291,27 @@ impl ContainerService for LocalContainerService {
         ExecutionProcess::update_completion(&self.db.pool, execution_process.id, status, exit_code)
             .await?;
 
-        // Try graceful interrupt first, then force kill
-        if let Some(interrupt_sender) = self.take_interrupt_sender(&execution_process.id).await {
-            // Send interrupt signal (ignore error if receiver dropped)
-            let _ = interrupt_sender.send(());
+        // Try graceful cancellation first, then force kill
+        if let Some(cancel) = self.take_cancellation_token(&execution_process.id).await {
+            cancel.cancel();
 
-            // Wait for graceful exit with timeout
-            let graceful_exit = {
-                let mut child_guard = child.write().await;
-                tokio::time::timeout(Duration::from_secs(5), child_guard.wait()).await
-            };
-
-            match graceful_exit {
-                Ok(Ok(_)) => {
-                    tracing::debug!(
-                        "Process {} exited gracefully after interrupt",
-                        execution_process.id
-                    );
-                }
-                Ok(Err(e)) => {
-                    tracing::info!("Error waiting for process {}: {}", execution_process.id, e);
-                }
-                Err(_) => {
-                    tracing::debug!(
-                        "Graceful shutdown timed out for process {}, force killing",
-                        execution_process.id
-                    );
+            // Wait for exit monitor to finish gracefully
+            if let Some(monitor_handle) = self.take_exit_monitor_handle(&execution_process.id).await
+            {
+                match tokio::time::timeout(Duration::from_secs(5), monitor_handle).await {
+                    Ok(_) => {
+                        tracing::debug!("Process {} exited gracefully", execution_process.id);
+                    }
+                    Err(_) => {
+                        tracing::debug!(
+                            "Graceful shutdown timed out for process {}, force killing",
+                            execution_process.id
+                        );
+                    }
                 }
             }
         }
 
-        // Kill the child process and remove from the store
         {
             let mut child_guard = child.write().await;
             if let Err(e) = command::kill_process_group(&mut child_guard).await {
@@ -1298,9 +1325,13 @@ impl ContainerService for LocalContainerService {
         }
         self.remove_child_from_store(&execution_process.id).await;
 
-        // Mark the process finished in the MsgStore
+        // Mark the process finished in the MsgStore and wait for DB persistence
+        let db_stream_handle = self.take_db_stream_handle(&execution_process.id).await;
         if let Some(msg) = self.msg_stores.write().await.remove(&execution_process.id) {
             msg.push_finished();
+        }
+        if let Some(handle) = db_stream_handle {
+            let _ = tokio::time::timeout(Duration::from_secs(5), handle).await;
         }
 
         // Update task status to InReview when execution is stopped

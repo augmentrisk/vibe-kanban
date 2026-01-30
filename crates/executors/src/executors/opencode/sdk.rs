@@ -817,12 +817,16 @@ async fn process_event_stream(
                 let log_writer = ctx.log_writer.clone();
                 let auto_approve = ctx.auto_approve;
                 tokio::spawn(async move {
+                    // Create a new cancel token for approval - we don't propagate cancellation
+                    // from the parent context for simplicity (OpenCode is not actively used)
+                    let approval_cancel = CancellationToken::new();
                     let status = request_permission_approval(
                         auto_approve,
                         approvals,
                         &permission,
                         tool_input,
                         &tool_call_id,
+                        approval_cancel,
                     )
                     .await;
 
@@ -921,6 +925,7 @@ async fn request_permission_approval(
     tool_name: &str,
     tool_input: Value,
     tool_call_id: &str,
+    cancel: CancellationToken,
 ) -> ApprovalStatus {
     if auto_approve {
         return ApprovalStatus::Approved;
@@ -931,7 +936,7 @@ async fn request_permission_approval(
     };
 
     match approvals
-        .request_tool_approval(tool_name, tool_input, tool_call_id)
+        .request_tool_approval(tool_name, tool_input, tool_call_id, cancel)
         .await
     {
         Ok(status) => status,

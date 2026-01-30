@@ -12,7 +12,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
-import { LinkProjectDialog } from '@/components/dialogs/projects/LinkProjectDialog';
 import { useTranslation } from 'react-i18next';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { Link as LinkIcon, Loader2 } from 'lucide-react';
@@ -82,15 +81,6 @@ const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
     }
   };
 
-  const handleLinkProject = () => {
-    if (!project) return;
-
-    void LinkProjectDialog.show({
-      projectId: project.id,
-      projectName: project.name,
-    });
-  };
-
   const isShareDisabled = systemLoading || shareTask.isPending;
   const isProjectLinked = project?.remote_project_id != null;
 
@@ -123,16 +113,8 @@ const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
         ) : !isProjectLinked ? (
           <Alert className="mt-1">
             <LinkIcon className="h-4 w-4" />
-            <AlertDescription className="flex items-center justify-between">
-              <span>{t('shareDialog.linkProjectRequired.description')}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLinkProject}
-                className="ml-2"
-              >
-                {t('shareDialog.linkProjectRequired.action')}
-              </Button>
+            <AlertDescription>
+              {t('shareDialog.linkProjectRequired.description')}
             </AlertDescription>
           </Alert>
         ) : (

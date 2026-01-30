@@ -106,7 +106,9 @@ impl Opencode {
         let log_writer = LogWriter::new(stdout);
 
         let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
-        let (interrupt_tx, interrupt_rx) = tokio::sync::oneshot::channel();
+        let cancel = tokio_util::sync::CancellationToken::new();
+        // Create interrupt channel for run_session (legacy API, we use cancel token for SpawnedChild)
+        let (_interrupt_tx, interrupt_rx) = tokio::sync::oneshot::channel();
 
         // Prepare config values that will be moved into the spawned task
         let directory = current_dir.to_string_lossy().to_string();
@@ -165,7 +167,7 @@ impl Opencode {
         Ok(SpawnedChild {
             child,
             exit_signal: Some(exit_signal_rx),
-            interrupt_sender: Some(interrupt_tx),
+            cancel: Some(cancel),
         })
     }
 }
@@ -252,6 +254,7 @@ impl StandardCodingAgentExecutor for Opencode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let env = setup_permissions_env(self.auto_approve, env);

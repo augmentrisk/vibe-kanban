@@ -188,6 +188,7 @@ impl StandardCodingAgentExecutor for Codex {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder()?.build_follow_up(&[])?;
@@ -459,7 +460,7 @@ impl Codex {
         Ok(SpawnedChild {
             child,
             exit_signal: Some(exit_signal_rx),
-            interrupt_sender: None,
+            cancel: None,
         })
     }
 
@@ -477,15 +478,22 @@ impl Codex {
         repo_context: crate::env::RepoContext,
         commit_reminder: bool,
     ) -> Result<(), ExecutorError> {
+        let cancel = tokio_util::sync::CancellationToken::new();
         let client = AppServerClient::new(
             log_writer,
             approvals,
             auto_approve,
             repo_context,
             commit_reminder,
+            cancel.clone(),
         );
-        let rpc_peer =
-            JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx);
+        let rpc_peer = JsonRpcPeer::spawn(
+            child_stdin,
+            child_stdout,
+            client.clone(),
+            exit_signal_tx,
+            cancel,
+        );
         client.connect(rpc_peer);
         client.initialize().await?;
         let auth_status = client.get_auth_status().await?;

@@ -121,13 +121,17 @@ function AppContent() {
 
       // 2) Onboarding - collect Claude token (agent/editor are hardcoded defaults)
       if (!config.onboarding_acknowledged) {
-        await OnboardingDialog.show();
+        const result = await OnboardingDialog.show();
         if (!cancelled) {
+          // If the token was configured during onboarding, update state
+          // immediately so step 3 (ClaudeTokenRequiredDialog) is skipped
+          // when this effect re-runs after the config update below.
+          if (result?.tokenConfigured) {
+            setHasClaudeToken(true);
+          }
           await updateAndSaveConfig({
             onboarding_acknowledged: true,
           });
-          // Refresh token status so step 3 sees the newly-saved token
-          await checkClaudeTokenStatus();
         }
         OnboardingDialog.hide();
         return;

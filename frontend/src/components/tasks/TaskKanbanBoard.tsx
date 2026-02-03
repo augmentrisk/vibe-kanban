@@ -1,6 +1,5 @@
 import { memo } from 'react';
 import {
-  type DragEndEvent,
   KanbanBoard,
   KanbanCards,
   KanbanHeader,
@@ -14,7 +13,6 @@ export type KanbanColumns = Record<TaskStatus, TaskWithAttemptStatus[]>;
 
 interface TaskKanbanBoardProps {
   columns: KanbanColumns;
-  onDragEnd: (event: DragEndEvent) => void;
   onViewTaskDetails: (task: TaskWithAttemptStatus) => void;
   selectedTaskId?: string;
   onCreateTask?: () => void;
@@ -23,14 +21,13 @@ interface TaskKanbanBoardProps {
 
 function TaskKanbanBoard({
   columns,
-  onDragEnd,
   onViewTaskDetails,
   selectedTaskId,
   onCreateTask,
   projectId,
 }: TaskKanbanBoardProps) {
   return (
-    <KanbanProvider onDragEnd={onDragEnd}>
+    <KanbanProvider>
       {Object.entries(columns).map(([status, tasks]) => {
         const statusKey = status as TaskStatus;
         return (

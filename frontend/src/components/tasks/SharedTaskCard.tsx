@@ -45,7 +45,6 @@ export function SharedTaskCard({
       onClick={handleClick}
       isOpen={isSelected}
       forwardedRef={localRef}
-      dragDisabled
       className="relative overflow-hidden pl-5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-muted-foreground before:content-['']"
     >
       <div className="flex flex-col gap-2">

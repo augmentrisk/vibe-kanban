@@ -695,11 +695,6 @@ export function ProjectTasks() {
     }
   }, [selectedTask, visibleTasksByStatus, handleViewTaskDetails]);
 
-  // Status is now managed by the server based on events, not manually
-  const handleDragEnd = useCallback(() => {
-    // no-op: status changes will be driven by server events
-  }, []);
-
   const isInitialTasksLoad = isLoading && tasks.length === 0;
 
   if (projectError) {
@@ -761,7 +756,6 @@ export function ProjectTasks() {
       <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain">
         <TaskKanbanBoard
           columns={kanbanColumns}
-          onDragEnd={handleDragEnd}
           onViewTaskDetails={handleViewTaskDetails}
           selectedTaskId={selectedTask?.id}
           onCreateTask={handleCreateNewTask}

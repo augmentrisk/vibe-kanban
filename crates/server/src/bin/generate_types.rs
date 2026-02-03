@@ -193,7 +193,6 @@ fn generate_types_content() -> String {
         services::services::config::GitHubConfig::decl(),
         services::services::config::SoundFile::decl(),
         services::services::config::UiLanguage::decl(),
-        services::services::config::ShowcaseState::decl(),
         services::services::config::SendMessageShortcut::decl(),
         services::services::git::GitBranch::decl(),
         services::services::queued_message::QueuedMessage::decl(),

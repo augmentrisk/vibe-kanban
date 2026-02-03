@@ -25,7 +25,6 @@ pub type SoundFile = versions::v8::SoundFile;
 pub type EditorType = versions::v8::EditorType;
 pub type GitHubConfig = versions::v8::GitHubConfig;
 pub type UiLanguage = versions::v8::UiLanguage;
-pub type ShowcaseState = versions::v8::ShowcaseState;
 pub type SendMessageShortcut = versions::v8::SendMessageShortcut;
 
 /// Will always return config, trying old schemas or eventually returning default

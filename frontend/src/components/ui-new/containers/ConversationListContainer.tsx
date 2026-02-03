@@ -1,12 +1,5 @@
-import {
-  DataWithScrollModifier,
-  ScrollModifier,
-  VirtuosoMessageList,
-  VirtuosoMessageListLicense,
-  VirtuosoMessageListMethods,
-  VirtuosoMessageListProps,
-} from '@virtuoso.dev/message-list';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 
 import { cn } from '@/lib/utils';
 import NewDisplayConversationEntry from './NewDisplayConversationEntry';
@@ -23,67 +16,13 @@ interface ConversationListProps {
   attempt: WorkspaceWithSession;
 }
 
-interface MessageListContext {
-  attempt: WorkspaceWithSession;
-}
-
-const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
-
-const InitialDataScrollModifier: ScrollModifier = {
-  type: 'item-location',
-  location: INITIAL_TOP_ITEM,
-  purgeItemSizes: true,
-};
-
-const AutoScrollToBottom: ScrollModifier = {
-  type: 'auto-scroll-to-bottom',
-  autoScroll: 'smooth',
-};
-
-const ScrollToTopOfLastItem: ScrollModifier = {
-  type: 'item-location',
-  location: {
-    index: 'LAST',
-    align: 'start',
-  },
-};
-
-const ItemContent: VirtuosoMessageListProps<
-  PatchTypeWithKey,
-  MessageListContext
->['ItemContent'] = ({ data, context }) => {
-  const attempt = context?.attempt;
-
-  if (data.type === 'STDOUT') {
-    return <p>{data.content}</p>;
-  }
-  if (data.type === 'STDERR') {
-    return <p>{data.content}</p>;
-  }
-  if (data.type === 'NORMALIZED_ENTRY' && attempt) {
-    return (
-      <NewDisplayConversationEntry
-        expansionKey={data.patchKey}
-        entry={data.content}
-        executionProcessId={data.executionProcessId}
-        taskAttempt={attempt}
-      />
-    );
-  }
-
-  return null;
-};
-
-const computeItemKey: VirtuosoMessageListProps<
-  PatchTypeWithKey,
-  MessageListContext
->['computeItemKey'] = ({ data }) => `conv-${data.patchKey}`;
-
 export function ConversationList({ attempt }: ConversationListProps) {
-  const [channelData, setChannelData] =
-    useState<DataWithScrollModifier<PatchTypeWithKey> | null>(null);
+  const [entries, setEntriesState] = useState<PatchTypeWithKey[]>([]);
   const [loading, setLoading] = useState(true);
   const { setEntries, reset } = useEntries();
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const [atBottom, setAtBottom] = useState(true);
+  const didInitScroll = useRef(false);
   const pendingUpdateRef = useRef<{
     entries: PatchTypeWithKey[];
     addType: AddEntryType;
@@ -93,8 +32,9 @@ export function ConversationList({ attempt }: ConversationListProps) {
 
   useEffect(() => {
     setLoading(true);
-    setChannelData(null);
+    setEntriesState([]);
     reset();
+    didInitScroll.current = false;
   }, [attempt.id, reset]);
 
   useEffect(() => {
@@ -124,30 +64,65 @@ export function ConversationList({ attempt }: ConversationListProps) {
       const pending = pendingUpdateRef.current;
       if (!pending) return;
 
-      let scrollModifier: ScrollModifier = InitialDataScrollModifier;
-
-      if (pending.addType === 'plan' && !loading) {
-        scrollModifier = ScrollToTopOfLastItem;
-      } else if (pending.addType === 'running' && !loading) {
-        scrollModifier = AutoScrollToBottom;
-      }
-
-      setChannelData({ data: pending.entries, scrollModifier });
+      setEntriesState(pending.entries);
       setEntries(pending.entries);
 
       if (loading) {
         setLoading(pending.loading);
+      }
+
+      // On initial load, jump to the bottom
+      if (
+        pending.addType === 'initial' &&
+        !didInitScroll.current &&
+        pending.entries.length > 0
+      ) {
+        didInitScroll.current = true;
+        requestAnimationFrame(() => {
+          virtuosoRef.current?.scrollToIndex({
+            index: pending.entries.length - 1,
+            align: 'end',
+          });
+        });
+      }
+
+      // On plan updates, scroll so the last item's top is visible
+      if (pending.addType === 'plan' && pending.entries.length > 0) {
+        requestAnimationFrame(() => {
+          virtuosoRef.current?.scrollToIndex({
+            index: pending.entries.length - 1,
+            align: 'start',
+          });
+        });
       }
     }, 100);
   };
 
   useConversationHistory({ attempt, onEntriesUpdated });
 
-  const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
-  const messageListContext = useMemo(() => ({ attempt }), [attempt]);
-
   // Determine if content is ready to show (has data or finished loading)
-  const hasContent = !loading || (channelData?.data?.length ?? 0) > 0;
+  const hasContent = !loading || entries.length > 0;
+
+  const itemContent = (_index: number, data: PatchTypeWithKey) => {
+    if (data.type === 'STDOUT') {
+      return <p>{data.content}</p>;
+    }
+    if (data.type === 'STDERR') {
+      return <p>{data.content}</p>;
+    }
+    if (data.type === 'NORMALIZED_ENTRY') {
+      return (
+        <NewDisplayConversationEntry
+          expansionKey={data.patchKey}
+          entry={data.content}
+          executionProcessId={data.executionProcessId}
+          taskAttempt={attempt}
+        />
+      );
+    }
+
+    return null;
+  };
 
   return (
     <ApprovalFormProvider>
@@ -157,21 +132,20 @@ export function ConversationList({ attempt }: ConversationListProps) {
           hasContent ? 'opacity-100' : 'opacity-0'
         )}
       >
-        <VirtuosoMessageListLicense
-          licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
-        >
-          <VirtuosoMessageList<PatchTypeWithKey, MessageListContext>
-            ref={messageListRef}
-            className="h-full scrollbar-none"
-            data={channelData}
-            initialLocation={INITIAL_TOP_ITEM}
-            context={messageListContext}
-            computeItemKey={computeItemKey}
-            ItemContent={ItemContent}
-            Header={() => <div className="h-2" />}
-            Footer={() => <div className="h-2" />}
-          />
-        </VirtuosoMessageListLicense>
+        <Virtuoso<PatchTypeWithKey>
+          ref={virtuosoRef}
+          className="h-full scrollbar-none"
+          data={entries}
+          itemContent={itemContent}
+          computeItemKey={(_, data) => `conv-${data.patchKey}`}
+          atBottomStateChange={setAtBottom}
+          followOutput={atBottom ? 'smooth' : false}
+          increaseViewportBy={{ top: 0, bottom: 600 }}
+          components={{
+            Header: () => <div className="h-2" />,
+            Footer: () => <div className="h-2" />,
+          }}
+        />
       </div>
     </ApprovalFormProvider>
   );

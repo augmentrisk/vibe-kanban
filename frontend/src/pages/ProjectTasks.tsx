@@ -7,9 +7,7 @@ import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import type { RepoBranchStatus, Workspace } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
-import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
 import { BetaWorkspacesDialog } from '@/components/dialogs/global/BetaWorkspacesDialog';
-import { showcases } from '@/config/showcases';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useWorkspaceCount } from '@/hooks/useWorkspaceCount';
 import { usePostHog } from 'posthog-js/react';
@@ -179,31 +177,6 @@ export function ProjectTasks() {
   const { config, updateAndSaveConfig, loading } = useUserSystem();
 
   const isLoaded = !loading;
-  const showcaseId = showcases.taskPanel.id;
-  const seenFeatures = useMemo(
-    () => config?.showcases?.seen_features ?? [],
-    [config?.showcases?.seen_features]
-  );
-  const seen = isLoaded && seenFeatures.includes(showcaseId);
-
-  useEffect(() => {
-    if (!isLoaded || !isPanelOpen || seen) return;
-
-    FeatureShowcaseDialog.show({ config: showcases.taskPanel }).finally(() => {
-      FeatureShowcaseDialog.hide();
-      if (seenFeatures.includes(showcaseId)) return;
-      void updateAndSaveConfig({
-        showcases: { seen_features: [...seenFeatures, showcaseId] },
-      });
-    });
-  }, [
-    isLoaded,
-    isPanelOpen,
-    seen,
-    showcaseId,
-    updateAndSaveConfig,
-    seenFeatures,
-  ]);
 
   // Beta workspaces invitation - only fetch count if invitation not yet sent
   const shouldCheckBetaInvitation =

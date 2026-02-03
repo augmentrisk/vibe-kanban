@@ -3,8 +3,7 @@ use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 pub use v7::{
-    EditorConfig, EditorType, GitHubConfig, NotificationConfig, ShowcaseState, SoundFile,
-    ThemeMode, UiLanguage,
+    EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFile, ThemeMode, UiLanguage,
 };
 
 use crate::services::config::versions::v7;
@@ -41,8 +40,6 @@ pub struct Config {
     pub language: UiLanguage,
     #[serde(default = "default_git_branch_prefix")]
     pub git_branch_prefix: String,
-    #[serde(default)]
-    pub showcases: ShowcaseState,
     #[serde(default = "default_pr_auto_description_enabled")]
     pub pr_auto_description_enabled: bool,
     #[serde(default)]
@@ -76,7 +73,6 @@ impl Config {
             last_app_version: old_config.last_app_version,
             language: old_config.language,
             git_branch_prefix: old_config.git_branch_prefix,
-            showcases: old_config.showcases,
             pr_auto_description_enabled: true,
             pr_auto_description_prompt: None,
             beta_workspaces: false,
@@ -129,7 +125,6 @@ impl Default for Config {
             last_app_version: None,
             language: UiLanguage::default(),
             git_branch_prefix: default_git_branch_prefix(),
-            showcases: ShowcaseState::default(),
             pr_auto_description_enabled: true,
             pr_auto_description_prompt: None,
             beta_workspaces: false,

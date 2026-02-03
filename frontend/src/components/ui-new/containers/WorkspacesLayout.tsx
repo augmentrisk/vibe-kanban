@@ -14,9 +14,6 @@ import { ChangesPanelContainer } from '@/components/ui-new/containers/ChangesPan
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
 import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer';
 import { PreviewBrowserContainer } from '@/components/ui-new/containers/PreviewBrowserContainer';
-import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
-import { useUserSystem } from '@/components/ConfigProvider';
-
 import {
   PERSIST_KEYS,
   usePaneSize,
@@ -26,8 +23,6 @@ import {
 
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
-
-const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 
 export function WorkspacesLayout() {
   const {
@@ -54,24 +49,7 @@ export function WorkspacesLayout() {
     setLeftMainPanelVisible,
   } = useWorkspacePanelState(isCreateMode ? undefined : workspaceId);
 
-  const {
-    config,
-    updateAndSaveConfig,
-    loading: configLoading,
-  } = useUserSystem();
-
   useCommandBarShortcut(() => CommandBarDialog.show());
-
-  // Auto-show Workspaces Guide on first visit
-  useEffect(() => {
-    const seenFeatures = config?.showcases?.seen_features ?? [];
-    if (configLoading || seenFeatures.includes(WORKSPACES_GUIDE_ID)) return;
-
-    void updateAndSaveConfig({
-      showcases: { seen_features: [...seenFeatures, WORKSPACES_GUIDE_ID] },
-    });
-    WorkspacesGuideDialog.show().finally(() => WorkspacesGuideDialog.hide());
-  }, [configLoading, config?.showcases?.seen_features, updateAndSaveConfig]);
 
   // Ensure left panels visible when right main panel hidden
   useEffect(() => {

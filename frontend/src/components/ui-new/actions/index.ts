@@ -35,7 +35,6 @@ import {
   HighlighterIcon,
   ListIcon,
   MegaphoneIcon,
-  QuestionIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import {
@@ -58,7 +57,6 @@ import { getIdeName } from '@/components/ide/IdeIcon';
 import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
 import { StartReviewDialog } from '@/components/dialogs/tasks/StartReviewDialog';
 import posthog from 'posthog-js';
-import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
 import { SettingsDialog } from '@/components/ui-new/dialogs/SettingsDialog';
 
 // Mirrored sidebar icon for right sidebar toggle
@@ -384,16 +382,6 @@ export const Actions = {
     requiresTarget: false,
     execute: () => {
       posthog.displaySurvey('019bb6e8-3d36-0000-1806-7330cd3c727e');
-    },
-  },
-
-  WorkspacesGuide: {
-    id: 'workspaces-guide',
-    label: 'Workspaces Guide',
-    icon: QuestionIcon,
-    requiresTarget: false,
-    execute: async () => {
-      await WorkspacesGuideDialog.show();
     },
   },
 
@@ -1012,7 +1000,6 @@ export const NavbarActionGroups = {
     NavbarDivider,
     Actions.OpenCommandBar,
     Actions.Feedback,
-    Actions.WorkspacesGuide,
     Actions.Settings,
   ] as NavbarItem[],
 };

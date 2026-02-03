@@ -85,19 +85,7 @@ impl Deployment for LocalDeployment {
             raw_config.executor_profile = recommended_executor;
         }
 
-        // Check if app version has changed and set release notes flag
-        {
-            let current_version = utils::version::APP_VERSION;
-            let stored_version = raw_config.last_app_version.as_deref();
-
-            if stored_version != Some(current_version) {
-                // Show release notes only if this is an upgrade (not first install)
-                raw_config.show_release_notes = stored_version.is_some();
-                raw_config.last_app_version = Some(current_version.to_string());
-            }
-        }
-
-        // Always save config (may have been migrated or version updated)
+        // Always save config (may have been migrated)
         save_config_to_file(&raw_config, &config_path()).await?;
 
         if let Some(workspace_dir) = &raw_config.workspace_dir {

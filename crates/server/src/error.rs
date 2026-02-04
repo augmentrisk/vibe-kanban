@@ -14,16 +14,10 @@ use executors::{command::CommandBuildError, executors::ExecutorError};
 use git2::Error as Git2Error;
 use local_deployment::pty::PtyError;
 use services::services::{
-    config::ConfigError,
-    container::ContainerError,
-    git::GitServiceError,
-    git_host::GitHostError,
-    github_oauth::GitHubOAuthError,
-    image::ImageError,
-    local_session::SessionError as LocalSessionError,
-    project::ProjectServiceError,
-    remote_client::RemoteClientError,
-    repo::RepoError as RepoServiceError,
+    config::ConfigError, container::ContainerError, git::GitServiceError, git_host::GitHostError,
+    github_oauth::GitHubOAuthError, image::ImageError,
+    local_session::SessionError as LocalSessionError, project::ProjectServiceError,
+    remote_client::RemoteClientError, repo::RepoError as RepoServiceError,
     worktree_manager::WorktreeError,
 };
 use thiserror::Error;

@@ -485,7 +485,13 @@ pub async fn place_hold(
         return Err(ApiError::BadRequest("Task is already on hold".to_string()));
     }
 
-    Task::place_hold(&deployment.db().pool, task.id, user.as_ref().map(|u| u.id), comment.to_string()).await?;
+    Task::place_hold(
+        &deployment.db().pool,
+        task.id,
+        user.as_ref().map(|u| u.id),
+        comment.to_string(),
+    )
+    .await?;
 
     let hold_info = TaskHoldInfo {
         user: user.map(TaskUser::from),

@@ -145,7 +145,7 @@ export function TaskCard({
                   <Link className="h-4 w-4" />
                 </Button>
               )}
-              <ActionsDropdown task={task} sharedTask={sharedTask} />
+              <ActionsDropdown task={task} />
             </>
           }
         />

@@ -55,6 +55,7 @@ pub struct ReviewConversation {
     pub id: Uuid,
     pub workspace_id: Uuid,
     pub file_path: String,
+    #[ts(type = "number")]
     pub line_number: i64,
     pub side: String, // "old" or "new"
     pub code_line: Option<String>,
@@ -126,6 +127,7 @@ pub struct ConversationWithMessages {
 #[ts(export)]
 pub struct CreateConversation {
     pub file_path: String,
+    #[ts(type = "number")]
     pub line_number: i64,
     pub side: DiffSide,
     pub code_line: Option<String>,

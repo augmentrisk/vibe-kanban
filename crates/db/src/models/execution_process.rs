@@ -67,6 +67,7 @@ pub struct ExecutionProcess {
     #[ts(type = "ExecutorAction")]
     pub executor_action: sqlx::types::Json<ExecutorActionField>,
     pub status: ExecutionProcessStatus,
+    #[ts(type = "number | null")]
     pub exit_code: Option<i64>,
     /// dropped: true if this process is excluded from the current
     /// history view (due to restore/trimming). Hidden from logs/timeline;
@@ -89,6 +90,7 @@ pub struct CreateExecutionProcess {
 #[allow(dead_code)]
 pub struct UpdateExecutionProcess {
     pub status: Option<ExecutionProcessStatus>,
+    #[ts(type = "number | null")]
     pub exit_code: Option<i64>,
     pub completed_at: Option<DateTime<Utc>>,
 }

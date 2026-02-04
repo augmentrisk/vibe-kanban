@@ -46,6 +46,7 @@ pub struct PrMerge {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct PullRequestInfo {
+    #[ts(type = "number")]
     pub number: i64,
     pub url: String,
     pub status: MergeStatus,

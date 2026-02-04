@@ -10,6 +10,7 @@ pub struct Image {
     pub file_path: String, // relative path within cache/images/
     pub original_name: String,
     pub mime_type: Option<String>,
+    #[ts(type = "number")]
     pub size_bytes: i64,
     pub hash: String, // SHA256 hash for deduplication
     pub created_at: DateTime<Utc>,
@@ -21,6 +22,7 @@ pub struct CreateImage {
     pub file_path: String,
     pub original_name: String,
     pub mime_type: Option<String>,
+    #[ts(type = "number")]
     pub size_bytes: i64,
     pub hash: String,
 }

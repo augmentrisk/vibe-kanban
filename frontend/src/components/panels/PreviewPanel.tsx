@@ -120,7 +120,7 @@ export function PreviewPanel() {
   const failedDevServerProcess = devServerProcesses.find(
     (p) =>
       p.status === 'failed' ||
-      (p.status === 'completed' && p.exit_code !== null && p.exit_code !== 0n)
+      (p.status === 'completed' && p.exit_code !== null && p.exit_code !== 0)
   );
   const hasFailedDevServer = Boolean(failedDevServerProcess);
 

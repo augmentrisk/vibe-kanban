@@ -52,7 +52,7 @@ export function useCreateAttachments(
     path: img.file_path,
     proxy_url: `/api/images/${img.id}/file`,
     file_name: img.original_name,
-    size_bytes: Number(img.size_bytes),
+    size_bytes: img.size_bytes,
     format: img.mime_type?.split('/')[1] ?? 'png',
   }));
 

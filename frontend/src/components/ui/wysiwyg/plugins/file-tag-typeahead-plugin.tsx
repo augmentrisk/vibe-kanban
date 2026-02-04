@@ -41,7 +41,7 @@ interface DiffFileResult {
   name: string;
   is_file: boolean;
   match_type: 'FileName' | 'DirectoryName' | 'FullPath';
-  score: bigint;
+  score: number;
 }
 
 function getMatchingDiffFiles(
@@ -67,7 +67,7 @@ function getMatchingDiffFiles(
         is_file: true,
         match_type: nameMatches ? ('FileName' as const) : ('FullPath' as const),
         // High score to rank diff files above server results
-        score: BigInt(Number.MAX_SAFE_INTEGER),
+        score: Number.MAX_SAFE_INTEGER,
       };
     });
 }

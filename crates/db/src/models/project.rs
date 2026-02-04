@@ -91,6 +91,7 @@ pub struct SearchResult {
     pub match_type: SearchMatchType,
     /// Ranking score based on git history (higher = more recently/frequently edited)
     #[serde(default)]
+    #[ts(type = "number")]
     pub score: i64,
 }
 

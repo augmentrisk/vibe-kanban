@@ -88,12 +88,14 @@ pub struct ReviewCommentUser {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct PrReviewComment {
+    #[ts(type = "number")]
     pub id: i64,
     pub user: ReviewCommentUser,
     pub body: String,
     pub created_at: DateTime<Utc>,
     pub html_url: String,
     pub path: String,
+    #[ts(type = "number | null")]
     pub line: Option<i64>,
     pub side: Option<String>,
     pub diff_hunk: String,
@@ -113,6 +115,7 @@ pub enum UnifiedPrComment {
         url: Option<String>,
     },
     Review {
+        #[ts(type = "number")]
         id: i64,
         author: String,
         author_association: Option<String>,
@@ -120,6 +123,7 @@ pub enum UnifiedPrComment {
         created_at: DateTime<Utc>,
         url: Option<String>,
         path: String,
+        #[ts(type = "number | null")]
         line: Option<i64>,
         side: Option<String>,
         diff_hunk: Option<String>,

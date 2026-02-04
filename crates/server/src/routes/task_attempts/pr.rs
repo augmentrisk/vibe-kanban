@@ -61,6 +61,7 @@ pub enum PrError {
 pub struct AttachPrResponse {
     pub pr_attached: bool,
     pub pr_url: Option<String>,
+    #[ts(type = "number | null")]
     pub pr_number: Option<i64>,
     pub pr_status: Option<MergeStatus>,
 }

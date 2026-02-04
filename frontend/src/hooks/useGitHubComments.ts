@@ -75,7 +75,7 @@ export function useGitHubComments({
         createdAt: comment.created_at,
         url: comment.url,
         filePath: comment.path,
-        lineNumber: Number(comment.line),
+        lineNumber: comment.line,
         // Use side from API: "LEFT" = old/deleted side, "RIGHT" = new/added side (default)
         side: comment.side === 'LEFT' ? SplitSide.old : SplitSide.new,
         diffHunk: comment.diff_hunk,

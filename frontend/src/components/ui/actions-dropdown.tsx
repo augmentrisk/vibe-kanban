@@ -180,12 +180,9 @@ export function ActionsDropdown({
   const canStopShare =
     Boolean(sharedTask) && sharedTask?.assignee_user_id === userId;
 
-  // Hold permissions: can only place hold if signed in, task exists, and not already on hold
-  const canPlaceHold =
-    isSignedIn && Boolean(task) && !task?.hold && canEditShared;
-  // Can only release hold if signed in and user is the hold owner
-  const canReleaseHold =
-    isSignedIn && Boolean(task?.hold) && task?.hold_user_id === userId;
+  // Hold permissions: any user can place or release a hold (local deployment)
+  const canPlaceHold = Boolean(task) && !task?.hold;
+  const canReleaseHold = Boolean(task?.hold);
   const isOnHold = Boolean(task?.hold);
 
   return (

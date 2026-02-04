@@ -80,7 +80,7 @@ export type Task = { id: string, project_id: string, title: string, description:
 
 export type TaskUser = { id: string, username: string, avatar_url: string | null, };
 
-export type TaskHoldInfo = { user: TaskUser, comment: string, held_at: string, };
+export type TaskHoldInfo = { user: TaskUser | null, comment: string, held_at: string, };
 
 export type TaskWithUsers = { creator: TaskUser | null, assignee: TaskUser | null, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, creator_user_id: string | null, assignee_user_id: string | null, hold_user_id: string | null, hold_comment: string | null, hold_at: string | null, created_at: string, updated_at: string, };
 

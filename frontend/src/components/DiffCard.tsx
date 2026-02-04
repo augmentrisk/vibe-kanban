@@ -1,7 +1,8 @@
 import { Diff } from 'shared/types';
+import type { ConversationWithMessages } from 'shared/types';
 import { DiffModeEnum, DiffView, SplitSide } from '@git-diff-view/react';
 import { generateDiffFile, type DiffFile } from '@git-diff-view/file';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { getActualTheme } from '@/utils/theme';
@@ -22,10 +23,12 @@ import '@/styles/diff-style-overrides.css';
 import type { Workspace } from 'shared/types';
 import {
   useReview,
+  diffSideToSplitSide,
   type ReviewDraft,
   type ReviewComment,
 } from '@/contexts/ReviewProvider';
-import { CommentWidgetLine } from '@/components/diff/CommentWidgetLine';
+import { ConversationWidgetLine } from '@/components/diff/ConversationWidgetLine';
+import { ConversationRenderer } from '@/components/diff/ConversationRenderer';
 import { ReviewCommentRenderer } from '@/components/diff/ReviewCommentRenderer';
 import {
   useDiffViewMode,
@@ -33,6 +36,10 @@ import {
   useWrapTextDiff,
 } from '@/stores/useDiffViewStore';
 import { useProject } from '@/contexts/ProjectContext';
+
+type ExtendLineData =
+  | { type: 'conversation'; conversation: ConversationWithMessages }
+  | { type: 'review'; comment: ReviewComment };
 
 type Props = {
   diff: Diff;
@@ -79,7 +86,7 @@ export default function DiffCard({
 }: Props) {
   const { config } = useUserSystem();
   const theme = getActualTheme(config?.theme);
-  const { comments, drafts, setDraft } = useReview();
+  const { comments, drafts, setDraft, getConversationsForFile } = useReview();
   const globalMode = useDiffViewMode();
   const ignoreWhitespace = useIgnoreWhitespaceDiff();
   const wrapText = useWrapTextDiff();
@@ -149,18 +156,41 @@ export default function DiffCard({
     () => comments.filter((c) => c.filePath === filePath),
     [comments, filePath]
   );
+  const conversationsForFile = getConversationsForFile(filePath);
 
-  // Transform comments to git-diff-view extendData format
+  const unresolvedConversationsCount = conversationsForFile.filter(
+    (c) => !c.is_resolved
+  ).length;
+
+  // Transform comments + conversations to git-diff-view extendData format
   const extendData = useMemo(() => {
-    const oldFileData: Record<string, { data: ReviewComment }> = {};
-    const newFileData: Record<string, { data: ReviewComment }> = {};
+    const oldFileData: Record<string, { data: ExtendLineData }> = {};
+    const newFileData: Record<string, { data: ExtendLineData }> = {};
 
+    // Conversations first (highest priority)
+    conversationsForFile.forEach((conversation) => {
+      const lineKey = String(conversation.line_number);
+      const entry: ExtendLineData = { type: 'conversation', conversation };
+      const side = diffSideToSplitSide(conversation.side);
+      if (side === SplitSide.old) {
+        oldFileData[lineKey] = { data: entry };
+      } else {
+        newFileData[lineKey] = { data: entry };
+      }
+    });
+
+    // Legacy user comments (only if no conversation on that line)
     commentsForFile.forEach((comment) => {
       const lineKey = String(comment.lineNumber);
+      const entry: ExtendLineData = { type: 'review', comment };
       if (comment.side === SplitSide.old) {
-        oldFileData[lineKey] = { data: comment };
+        if (!oldFileData[lineKey]) {
+          oldFileData[lineKey] = { data: entry };
+        }
       } else {
-        newFileData[lineKey] = { data: comment };
+        if (!newFileData[lineKey]) {
+          newFileData[lineKey] = { data: entry };
+        }
       }
     });
 
@@ -168,7 +198,7 @@ export default function DiffCard({
       oldFile: oldFileData,
       newFile: newFileData,
     };
-  }, [commentsForFile]);
+  }, [conversationsForFile, commentsForFile]);
 
   const handleAddWidgetClick = (lineNumber: number, side: SplitSide) => {
     const widgetKey = `${filePath}-${side}-${lineNumber}`;
@@ -183,31 +213,50 @@ export default function DiffCard({
     setDraft(widgetKey, draft);
   };
 
-  const renderWidgetLine = (props: {
-    side: SplitSide;
-    lineNumber: number;
-    onClose: () => void;
-  }) => {
-    const widgetKey = `${filePath}-${props.side}-${props.lineNumber}`;
-    const draft = drafts[widgetKey];
-    if (!draft) return null;
+  const renderWidgetLine = useCallback(
+    (props: {
+      side: SplitSide;
+      lineNumber: number;
+      onClose: () => void;
+    }) => {
+      const widgetKey = `${filePath}-${props.side}-${props.lineNumber}`;
+      const draft = drafts[widgetKey];
+      if (!draft) return null;
 
-    return (
-      <CommentWidgetLine
-        draft={draft}
-        widgetKey={widgetKey}
-        onSave={props.onClose}
-        onCancel={props.onClose}
-        projectId={projectId}
-      />
-    );
-  };
+      return (
+        <ConversationWidgetLine
+          draft={draft}
+          widgetKey={widgetKey}
+          onSave={props.onClose}
+          onCancel={props.onClose}
+          projectId={projectId}
+        />
+      );
+    },
+    [filePath, drafts, projectId]
+  );
 
-  const renderExtendLine = (lineData: { data: ReviewComment }) => {
-    return (
-      <ReviewCommentRenderer comment={lineData.data} projectId={projectId} />
-    );
-  };
+  const renderExtendLine = useCallback(
+    (lineData: { data: ExtendLineData }) => {
+      if (!lineData.data) return null;
+
+      if (lineData.data.type === 'conversation') {
+        return (
+          <ConversationRenderer
+            conversation={lineData.data.conversation}
+            projectId={projectId}
+          />
+        );
+      }
+      return (
+        <ReviewCommentRenderer
+          comment={lineData.data.comment}
+          projectId={projectId}
+        />
+      );
+    },
+    [projectId]
+  );
 
   // Title row
   const title = (
@@ -232,10 +281,10 @@ export default function DiffCard({
       <span className="ml-2" style={{ color: 'hsl(var(--console-error))' }}>
         -{del}
       </span>
-      {commentsForFile.length > 0 && (
+      {(commentsForFile.length + unresolvedConversationsCount) > 0 && (
         <span className="ml-3 inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-primary/10 text-primary rounded">
           <MessageSquare className="h-3 w-3" />
-          {commentsForFile.length}
+          {commentsForFile.length + unresolvedConversationsCount}
         </span>
       )}
     </p>

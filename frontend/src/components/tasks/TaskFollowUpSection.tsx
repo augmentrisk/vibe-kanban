@@ -7,6 +7,8 @@ import {
   X,
   Paperclip,
   Terminal,
+  PauseCircle,
+  PlayCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -38,6 +40,8 @@ import { useHotkeysContext } from 'react-hotkeys-hook';
 import { useProject } from '@/contexts/ProjectContext';
 //
 import { VariantSelector } from '@/components/tasks/VariantSelector';
+import { HoldTaskDialog } from '@/components/dialogs/tasks/HoldTaskDialog';
+import { useTaskMutations } from '@/hooks';
 import { useAttemptBranch } from '@/hooks/useAttemptBranch';
 import { FollowUpConflictSection } from '@/components/tasks/follow-up/FollowUpConflictSection';
 import { ClickedElementsBanner } from '@/components/tasks/ClickedElementsBanner';
@@ -78,6 +82,24 @@ export function TaskFollowUpSection({
 
   const { isAttemptRunning, stopExecution, isStopping, processes } =
     useAttemptExecution(workspaceId, task.id);
+
+  const { placeHold, releaseHold } = useTaskMutations(projectId);
+  const isOnHold = Boolean(task.hold);
+
+  const handlePlaceHold = useCallback(async () => {
+    try {
+      const result = await HoldTaskDialog.show({ taskTitle: task.title });
+      if (result && result !== 'canceled') {
+        placeHold.mutate({ taskId: task.id, comment: result });
+      }
+    } catch {
+      // User cancelled
+    }
+  }, [task.id, task.title, placeHold]);
+
+  const handleReleaseHold = useCallback(() => {
+    releaseHold.mutate(task.id);
+  }, [task.id, releaseHold]);
 
   const { data: branchStatus, refetch: refetchBranchStatus } =
     useBranchStatus(workspaceId);
@@ -789,6 +811,47 @@ export function TaskFollowUpSection({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          )}
+
+          {/* Hold / Release Hold button */}
+          {isOnHold ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={handleReleaseHold}
+                    disabled={releaseHold.isPending}
+                    size="sm"
+                    variant="outline"
+                    className="border-amber-500 text-amber-600 hover:bg-amber-50"
+                  >
+                    {releaseHold.isPending ? (
+                      <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                    ) : (
+                      <PlayCircle className="h-4 w-4 mr-2" />
+                    )}
+                    {t('actionsMenu.releaseHold', 'Release Hold')}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  {task.hold?.comment}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <Button
+              onClick={handlePlaceHold}
+              disabled={placeHold.isPending}
+              size="sm"
+              variant="outline"
+            >
+              {placeHold.isPending ? (
+                <Loader2 className="animate-spin h-4 w-4 mr-2" />
+              ) : (
+                <PauseCircle className="h-4 w-4 mr-2" />
+              )}
+              {t('actionsMenu.placeHold', 'Hold')}
+            </Button>
           )}
 
           {isAttemptRunning ? (

@@ -17,6 +17,7 @@ import { AgentSelector } from '@/components/tasks/AgentSelector';
 import { ConfigSelector } from '@/components/tasks/ConfigSelector';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useReviewOptional } from '@/contexts/ReviewProvider';
 import { sessionsApi } from '@/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
@@ -38,7 +39,14 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
     const { profiles, config } = useUserSystem();
     const { sessions, selectedSession, selectedSessionId, selectSession } =
       useWorkspaceContext();
+    const reviewContext = useReviewOptional();
     const { t } = useTranslation(['tasks', 'common']);
+
+    // Use prop if provided, otherwise pull from review context (includes threaded conversations)
+    const effectiveReviewMarkdown = useMemo(
+      () => reviewMarkdown ?? reviewContext?.generateFullReviewMarkdown() ?? '',
+      [reviewMarkdown, reviewContext]
+    );
 
     const resolvedSessionId = sessionId ?? selectedSessionId;
     const resolvedSession = useMemo(() => {
@@ -104,7 +112,7 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
           return;
         }
 
-        const promptParts = [reviewMarkdown, additionalPrompt].filter(Boolean);
+        const promptParts = [effectiveReviewMarkdown, additionalPrompt].filter(Boolean);
         const combinedPrompt = promptParts.join('\n\n');
 
         await sessionsApi.startReview(targetSessionId, {
@@ -138,7 +146,7 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
       workspaceId,
       createNewSession,
       includeGitContext,
-      reviewMarkdown,
+      effectiveReviewMarkdown,
       additionalPrompt,
       queryClient,
       selectSession,
@@ -157,7 +165,7 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
       }
     };
 
-    const hasReviewComments = Boolean(reviewMarkdown);
+    const hasReviewComments = Boolean(effectiveReviewMarkdown);
 
     return (
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
@@ -191,14 +199,14 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
                 <Label className="text-sm font-medium">
                   {t('startReviewDialog.reviewComments', {
                     count:
-                      reviewMarkdown
+                      effectiveReviewMarkdown
                         ?.split('\n')
                         .filter((l) => l.startsWith('-')).length ?? 0,
                   })}
                 </Label>
                 <div className="text-sm text-muted-foreground bg-muted/50 rounded-md p-3 max-h-32 overflow-y-auto">
                   <pre className="whitespace-pre-wrap font-sans text-xs">
-                    {reviewMarkdown}
+                    {effectiveReviewMarkdown}
                   </pre>
                 </div>
               </div>

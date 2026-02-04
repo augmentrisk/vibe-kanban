@@ -101,7 +101,7 @@ export function TaskFollowUpSection({
   const { branch: attemptBranch, refetch: refetchAttemptBranch } =
     useAttemptBranch(workspaceId);
   const { profiles } = useUserSystem();
-  const { comments, generateReviewMarkdown, clearComments } = useReview();
+  const { comments, generateFullReviewMarkdown, clearComments } = useReview();
   const {
     generateMarkdown: generateClickedMarkdown,
     clearElements: clearClickedElements,
@@ -109,8 +109,8 @@ export function TaskFollowUpSection({
   const { enableScope, disableScope } = useHotkeysContext();
 
   const reviewMarkdown = useMemo(
-    () => generateReviewMarkdown(),
-    [generateReviewMarkdown]
+    () => generateFullReviewMarkdown(),
+    [generateFullReviewMarkdown]
   );
 
   const clickedMarkdown = useMemo(

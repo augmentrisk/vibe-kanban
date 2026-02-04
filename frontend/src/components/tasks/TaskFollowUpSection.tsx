@@ -7,7 +7,8 @@ import {
   X,
   Paperclip,
   Terminal,
-  MessageSquare,
+  PauseCircle,
+  PlayCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -27,7 +28,6 @@ import {
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { ScratchType, type TaskWithAttemptStatus } from 'shared/types';
 import { useBranchStatus } from '@/hooks';
-import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { cn } from '@/lib/utils';
@@ -40,6 +40,8 @@ import { useHotkeysContext } from 'react-hotkeys-hook';
 import { useProject } from '@/contexts/ProjectContext';
 //
 import { VariantSelector } from '@/components/tasks/VariantSelector';
+import { HoldTaskDialog } from '@/components/dialogs/tasks/HoldTaskDialog';
+import { useTaskMutations } from '@/hooks';
 import { useAttemptBranch } from '@/hooks/useAttemptBranch';
 import { FollowUpConflictSection } from '@/components/tasks/follow-up/FollowUpConflictSection';
 import { ClickedElementsBanner } from '@/components/tasks/ClickedElementsBanner';
@@ -60,8 +62,6 @@ import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queueApi } from '@/lib/api';
 import { imagesApi, attemptsApi } from '@/lib/api';
-import { PrCommentsDialog } from '@/components/dialogs/tasks/PrCommentsDialog';
-import type { NormalizedComment } from '@/components/ui/wysiwyg/nodes/pr-comment-node';
 import type { Session } from 'shared/types';
 
 interface TaskFollowUpSectionProps {
@@ -83,14 +83,26 @@ export function TaskFollowUpSection({
   const { isAttemptRunning, stopExecution, isStopping, processes } =
     useAttemptExecution(workspaceId, task.id);
 
+  const { placeHold, releaseHold } = useTaskMutations(projectId);
+  const isOnHold = Boolean(task.hold);
+
+  const handlePlaceHold = useCallback(async () => {
+    try {
+      const result = await HoldTaskDialog.show({ taskTitle: task.title });
+      if (result && result !== 'canceled') {
+        placeHold.mutate({ taskId: task.id, comment: result });
+      }
+    } catch {
+      // User cancelled
+    }
+  }, [task.id, task.title, placeHold]);
+
+  const handleReleaseHold = useCallback(() => {
+    releaseHold.mutate(task.id);
+  }, [task.id, releaseHold]);
+
   const { data: branchStatus, refetch: refetchBranchStatus } =
     useBranchStatus(workspaceId);
-  const { repos, selectedRepoId } = useAttemptRepo(workspaceId);
-
-  const getSelectedRepoId = useCallback(() => {
-    return selectedRepoId ?? repos[0]?.id;
-  }, [selectedRepoId, repos]);
-
   const repoWithConflicts = useMemo(
     () =>
       branchStatus?.find(
@@ -565,60 +577,6 @@ export function TaskFollowUpSection({
     [handlePasteFiles]
   );
 
-  // Handler for PR comments insertion
-  const handlePrCommentClick = useCallback(async () => {
-    if (!workspaceId) return;
-    const repoId = getSelectedRepoId();
-    if (!repoId) return;
-
-    const result = await PrCommentsDialog.show({
-      attemptId: workspaceId,
-      repoId,
-    });
-    if (result.comments.length > 0) {
-      // Build markdown for all selected comments
-      const markdownBlocks = result.comments.map((comment) => {
-        const payload: NormalizedComment = {
-          id:
-            comment.comment_type === 'general'
-              ? comment.id
-              : comment.id.toString(),
-          comment_type: comment.comment_type,
-          author: comment.author,
-          body: comment.body,
-          created_at: comment.created_at,
-          url: comment.url,
-          // Include review-specific fields when available
-          ...(comment.comment_type === 'review' && {
-            path: comment.path,
-            line: comment.line != null ? Number(comment.line) : null,
-            diff_hunk: comment.diff_hunk,
-          }),
-        };
-        return '```gh-comment\n' + JSON.stringify(payload, null, 2) + '\n```';
-      });
-
-      const markdown = markdownBlocks.join('\n\n');
-
-      // Same pattern as image paste
-      const { isQueued: currentlyQueued, queuedMessage: currentQueuedMessage } =
-        getQueueState();
-      if (currentlyQueued && currentQueuedMessage) {
-        cancelMutation.mutate();
-        const base = currentQueuedMessage.data.message;
-        const newMessage = base ? `${base}\n\n${markdown}` : markdown;
-        setLocalMessage(newMessage);
-        setFollowUpMessageRef.current(newMessage);
-      } else {
-        setLocalMessage((prev) => {
-          const newMessage = prev ? `${prev}\n\n${markdown}` : markdown;
-          setFollowUpMessageRef.current(newMessage);
-          return newMessage;
-        });
-      }
-    }
-  }, [workspaceId, getSelectedRepoId, getQueueState, cancelMutation]);
-
   // Stable onChange handler for WYSIWYGEditor
   const handleEditorChange = useCallback(
     (value: string) => {
@@ -820,18 +778,6 @@ export function TaskFollowUpSection({
             <Paperclip className="h-4 w-4" />
           </Button>
 
-          {/* PR Comments button */}
-          <Button
-            onClick={handlePrCommentClick}
-            disabled={!isEditable}
-            size="sm"
-            variant="outline"
-            title="Insert PR comment"
-            aria-label="Insert PR comment"
-          >
-            <MessageSquare className="h-4 w-4" />
-          </Button>
-
           {/* Scripts dropdown - only show if project has any scripts */}
           {hasAnyScript && (
             <DropdownMenu>
@@ -865,6 +811,47 @@ export function TaskFollowUpSection({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          )}
+
+          {/* Hold / Release Hold button */}
+          {isOnHold ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={handleReleaseHold}
+                    disabled={releaseHold.isPending}
+                    size="sm"
+                    variant="outline"
+                    className="border-amber-500 text-amber-600 hover:bg-amber-50"
+                  >
+                    {releaseHold.isPending ? (
+                      <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                    ) : (
+                      <PlayCircle className="h-4 w-4 mr-2" />
+                    )}
+                    {t('actionsMenu.releaseHold', 'Release Hold')}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  {task.hold?.comment}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <Button
+              onClick={handlePlaceHold}
+              disabled={placeHold.isPending}
+              size="sm"
+              variant="outline"
+            >
+              {placeHold.isPending ? (
+                <Loader2 className="animate-spin h-4 w-4 mr-2" />
+              ) : (
+                <PauseCircle className="h-4 w-4 mr-2" />
+              )}
+              {t('actionsMenu.placeHold', 'Hold')}
+            </Button>
           )}
 
           {isAttemptRunning ? (

@@ -16,40 +16,30 @@ import { ViewRelatedTasksDialog } from '@/components/dialogs/tasks/ViewRelatedTa
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import { GitActionsDialog } from '@/components/dialogs/tasks/GitActionsDialog';
 import { EditBranchNameDialog } from '@/components/dialogs/tasks/EditBranchNameDialog';
-import { ShareDialog } from '@/components/dialogs/tasks/ShareDialog';
-import { ReassignDialog } from '@/components/dialogs/tasks/ReassignDialog';
-import { StopShareTaskDialog } from '@/components/dialogs/tasks/StopShareTaskDialog';
 import { HoldTaskDialog } from '@/components/dialogs/tasks/HoldTaskDialog';
 import { useProject } from '@/contexts/ProjectContext';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { useTaskMutations } from '@/hooks';
 
 import { useNavigate } from 'react-router-dom';
-import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
-import { useAuth } from '@/hooks';
 import { WorkspaceWithSession } from '@/types/attempt';
 
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
   attempt?: WorkspaceWithSession | null;
-  sharedTask?: SharedTaskRecord;
 }
 
 export function ActionsDropdown({
   task,
   attempt,
-  sharedTask,
 }: ActionsDropdownProps) {
   const { t } = useTranslation('tasks');
   const { projectId } = useProject();
   const navigate = useNavigate();
-  const { userId, isSignedIn } = useAuth();
   const { placeHold, releaseHold } = useTaskMutations(projectId);
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
-  const isShared = Boolean(sharedTask);
-  const canEditShared = (!isShared && !task?.shared_task_id) || isSignedIn;
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -135,24 +125,6 @@ export function ActionsDropdown({
       currentBranchName: attempt.branch,
     });
   };
-  const handleShare = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!task || isShared) return;
-    ShareDialog.show({ task });
-  };
-
-  const handleReassign = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!sharedTask) return;
-    ReassignDialog.show({ sharedTask });
-  };
-
-  const handleStopShare = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!sharedTask) return;
-    StopShareTaskDialog.show({ sharedTask });
-  };
-
   const handlePlaceHold = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!task) return;
@@ -172,13 +144,6 @@ export function ActionsDropdown({
     if (!task) return;
     releaseHold.mutate(task.id);
   };
-
-  const canReassign =
-    Boolean(task) &&
-    Boolean(sharedTask) &&
-    sharedTask?.assignee_user_id === userId;
-  const canStopShare =
-    Boolean(sharedTask) && sharedTask?.assignee_user_id === userId;
 
   // Hold permissions: any user can place or release a hold (local deployment)
   const canPlaceHold = Boolean(task) && !task?.hold;
@@ -244,27 +209,7 @@ export function ActionsDropdown({
             <>
               <DropdownMenuLabel>{t('actionsMenu.task')}</DropdownMenuLabel>
               <DropdownMenuItem
-                disabled={!task || isShared}
-                onClick={handleShare}
-              >
-                {t('actionsMenu.share')}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!canReassign}
-                onClick={handleReassign}
-              >
-                {t('actionsMenu.reassign')}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!canStopShare}
-                onClick={handleStopShare}
-                className="text-destructive"
-              >
-                {t('actionsMenu.stopShare')}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                disabled={!projectId || !canEditShared}
+                disabled={!projectId}
                 onClick={handleEdit}
               >
                 {t('common:buttons.edit')}
@@ -273,7 +218,7 @@ export function ActionsDropdown({
                 {t('actionsMenu.duplicate')}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!projectId || !canEditShared}
+                disabled={!projectId}
                 onClick={handleDelete}
                 className="text-destructive"
               >

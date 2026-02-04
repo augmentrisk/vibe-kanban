@@ -2,7 +2,7 @@ import { forwardRef, createElement } from 'react';
 import type { Icon, IconProps } from '@phosphor-icons/react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { QueryClient } from '@tanstack/react-query';
-import type { EditorType, ExecutionProcess, Workspace } from 'shared/types';
+import type { ExecutionProcess, Workspace } from 'shared/types';
 import type { DiffViewMode } from '@/stores/useDiffViewStore';
 import {
   CopyIcon,
@@ -53,8 +53,6 @@ import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
 import { ResolveConflictsDialog } from '@/components/ui-new/dialogs/ResolveConflictsDialog';
 import { RenameWorkspaceDialog } from '@/components/ui-new/dialogs/RenameWorkspaceDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
-import { getIdeName } from '@/components/ide/IdeIcon';
-import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
 import { StartReviewDialog } from '@/components/dialogs/tasks/StartReviewDialog';
 import posthog from 'posthog-js';
 import { SettingsDialog } from '@/components/ui-new/dialogs/SettingsDialog';
@@ -71,7 +69,7 @@ const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
 RightSidebarIcon.displayName = 'RightSidebarIcon';
 
 // Special icon types for ContextBar
-export type SpecialIconType = 'ide-icon' | 'copy-icon';
+export type SpecialIconType = 'copy-icon';
 export type ActionIcon = Icon | SpecialIconType;
 
 // Workspace type for sidebar (minimal subset needed for workspace selection)
@@ -116,7 +114,6 @@ export interface ActionVisibilityContext {
   isAllDiffsExpanded: boolean;
 
   // Dev server state
-  editorType: EditorType | null;
   devServerState: DevServerState;
   runningDevServers: ExecutionProcess[];
 
@@ -627,32 +624,6 @@ export const Actions = {
   },
 
   // === ContextBar Actions ===
-  OpenInIDE: {
-    id: 'open-in-ide',
-    label: 'Open in IDE',
-    icon: 'ide-icon' as const,
-    requiresTarget: false,
-    isVisible: (ctx) => ctx.hasWorkspace,
-    getTooltip: (ctx) => `Open in ${getIdeName(ctx.editorType)}`,
-    execute: async (ctx) => {
-      if (!ctx.currentWorkspaceId) return;
-      try {
-        const response = await attemptsApi.openEditor(ctx.currentWorkspaceId, {
-          editor_type: null,
-          file_path: null,
-        });
-        if (response.url) {
-          window.open(response.url, '_blank');
-        }
-      } catch {
-        // Show editor selection dialog on failure
-        EditorSelectionDialog.show({
-          selectedAttemptId: ctx.currentWorkspaceId,
-        });
-      }
-    },
-  },
-
   CopyPath: {
     id: 'copy-path',
     label: 'Copy path',
@@ -893,28 +864,6 @@ export const Actions = {
     },
   },
 
-  RepoOpenInIDE: {
-    id: 'repo-open-in-ide',
-    label: 'Open Repo in IDE',
-    icon: DesktopIcon,
-    requiresTarget: 'git',
-    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    execute: async (_ctx, _workspaceId, repoId) => {
-      try {
-        const response = await repoApi.openEditor(repoId, {
-          editor_type: null,
-          file_path: null,
-        });
-        if (response.url) {
-          window.open(response.url, '_blank');
-        }
-      } catch (err) {
-        console.error('Failed to open repo in editor:', err);
-        throw new Error('Failed to open repository in IDE');
-      }
-    },
-  },
-
   RepoSettings: {
     id: 'repo-settings',
     label: 'Repository Settings',
@@ -1010,7 +959,7 @@ export type ContextBarItem = ActionDefinition | typeof ContextBarDivider;
 
 // ContextBar action groups define which actions appear in each section
 export const ContextBarActionGroups = {
-  primary: [Actions.OpenInIDE, Actions.CopyPath] as ActionDefinition[],
+  primary: [Actions.CopyPath] as ActionDefinition[],
   secondary: [
     Actions.ToggleDevServer,
     Actions.TogglePreviewMode,
@@ -1020,5 +969,5 @@ export const ContextBarActionGroups = {
 
 // Helper to check if an icon is a special type
 export function isSpecialIcon(icon: ActionIcon): icon is SpecialIconType {
-  return icon === 'ide-icon' || icon === 'copy-icon';
+  return icon === 'copy-icon';
 }

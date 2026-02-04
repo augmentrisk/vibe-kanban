@@ -69,7 +69,6 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
         label: 'Actions',
         items: [
           { type: 'action', action: Actions.NewWorkspace },
-          { type: 'action', action: Actions.OpenInIDE },
           { type: 'action', action: Actions.CopyPath },
           { type: 'action', action: Actions.ToggleDevServer },
           { type: 'action', action: Actions.OpenInOldUI },
@@ -200,7 +199,6 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
         label: 'Actions',
         items: [
           { type: 'action', action: Actions.RepoCopyPath },
-          { type: 'action', action: Actions.RepoOpenInIDE },
           { type: 'action', action: Actions.RepoSettings },
           { type: 'action', action: Actions.GitCreatePR },
           { type: 'action', action: Actions.GitMerge },

@@ -5,7 +5,7 @@ import {
 } from '@/stores/useUiPreferencesStore';
 import { useDiffViewStore, useDiffViewMode } from '@/stores/useDiffViewStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useUserSystem } from '@/components/ConfigProvider';
+
 import { useDevServer } from '@/hooks/useDevServer';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
@@ -33,7 +33,6 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
   const diffPaths = useDiffViewStore((s) => s.diffPaths);
   const diffViewMode = useDiffViewMode();
   const expanded = useUiPreferencesStore((s) => s.expanded);
-  const { config } = useUserSystem();
   const { isStarting, isStopping, runningDevServers } =
     useDevServer(workspaceId);
   const { data: branchStatus } = useBranchStatus(workspaceId);
@@ -77,7 +76,6 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       hasDiffs: diffPaths.length > 0,
       diffViewMode,
       isAllDiffsExpanded,
-      editorType: config?.editor?.editor_type ?? null,
       devServerState,
       runningDevServers,
       hasGitRepos: repos.length > 0,
@@ -97,7 +95,6 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     diffPaths,
     diffViewMode,
     expanded,
-    config?.editor?.editor_type,
     isStarting,
     isStopping,
     runningDevServers,

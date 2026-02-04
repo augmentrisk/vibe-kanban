@@ -14,16 +14,10 @@ use executors::{command::CommandBuildError, executors::ExecutorError};
 use git2::Error as Git2Error;
 use local_deployment::pty::PtyError;
 use services::services::{
-    config::{ConfigError, EditorOpenError},
-    container::ContainerError,
-    git::GitServiceError,
-    git_host::GitHostError,
-    github_oauth::GitHubOAuthError,
-    image::ImageError,
-    local_session::SessionError as LocalSessionError,
-    project::ProjectServiceError,
-    remote_client::RemoteClientError,
-    repo::RepoError as RepoServiceError,
+    config::ConfigError, container::ContainerError, git::GitServiceError, git_host::GitHostError,
+    github_oauth::GitHubOAuthError, image::ImageError,
+    local_session::SessionError as LocalSessionError, project::ProjectServiceError,
+    remote_client::RemoteClientError, repo::RepoError as RepoServiceError,
     worktree_manager::WorktreeError,
 };
 use thiserror::Error;
@@ -66,8 +60,6 @@ pub enum ApiError {
     Multipart(#[from] MultipartError),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    #[error(transparent)]
-    EditorOpen(#[from] EditorOpenError),
     #[error(transparent)]
     RemoteClient(#[from] RemoteClientError),
     #[error("Unauthorized")]
@@ -153,12 +145,6 @@ impl IntoResponse for ApiError {
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "ImageError"),
             },
             ApiError::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, "IoError"),
-            ApiError::EditorOpen(err) => match err {
-                EditorOpenError::LaunchFailed { .. } => {
-                    (StatusCode::INTERNAL_SERVER_ERROR, "EditorLaunchError")
-                }
-                _ => (StatusCode::BAD_REQUEST, "EditorOpenError"),
-            },
             ApiError::Multipart(_) => (StatusCode::BAD_REQUEST, "MultipartError"),
             ApiError::RemoteClient(err) => match err {
                 RemoteClientError::Auth => (StatusCode::UNAUTHORIZED, "RemoteClientError"),

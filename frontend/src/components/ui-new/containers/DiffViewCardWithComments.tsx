@@ -30,8 +30,6 @@ import { ConversationRenderer } from '@/components/diff/ConversationRenderer';
 import { ReviewCommentRenderer } from './ReviewCommentRenderer';
 import { GitHubCommentRenderer } from './GitHubCommentRenderer';
 import type { DiffChangeKind, ConversationWithMessages } from 'shared/types';
-import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
-import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import '@/styles/diff-style-overrides.css';
 import { DisplayTruncatedPath } from '@/utils/TruncatePath';
 
@@ -183,7 +181,7 @@ function useDiffData(input: DiffInput): DiffData {
 }
 
 export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
-  const { input, className, projectId, attemptId, mode } = props;
+  const { input, className, projectId, mode } = props;
 
   // Extract mode-specific values
   const expanded = mode === 'collapsible' ? props.expanded : true;
@@ -207,13 +205,6 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
     () => getConversationsForFile(filePath),
     [getConversationsForFile, filePath]
   );
-
-  // Open in IDE functionality
-  const openInEditor = useOpenInEditor(attemptId);
-
-  const handleOpenInIde = useCallback(() => {
-    openInEditor({ filePath });
-  }, [openInEditor, filePath]);
 
   const FileIcon = getFileIcon(filePath, actualTheme);
   const hasStats = additions > 0 || deletions > 0;
@@ -468,12 +459,6 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
           </span>
         )}
         <div className="flex items-center gap-1 shrink-0">
-          <span onClick={(e) => e.stopPropagation()}>
-            <OpenInIdeButton
-              onClick={handleOpenInIde}
-              className="size-icon-xs p-0"
-            />
-          </span>
           {onToggle && (
             <CaretDownIcon
               className={cn(

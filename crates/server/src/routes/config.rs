@@ -18,11 +18,7 @@ use executors::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use services::services::config::{
-    Config, ConfigError, SoundFile,
-    editor::{EditorConfig, EditorType},
-    save_config_to_file,
-};
+use services::services::config::{Config, ConfigError, SoundFile, save_config_to_file};
 use tokio::fs;
 use ts_rs::TS;
 use utils::{api::oauth::LoginStatus, assets::config_path, response::ApiResponse};
@@ -36,10 +32,6 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/sounds/{sound}", get(get_sound))
         .route("/mcp-config", get(get_mcp_servers).post(update_mcp_servers))
         .route("/profiles", get(get_profiles).put(update_profiles))
-        .route(
-            "/editors/check-availability",
-            get(check_editor_availability),
-        )
         .route("/agents/check-availability", get(check_agent_availability))
 }
 
@@ -436,34 +428,6 @@ async fn update_profiles(
             e
         ))),
     }
-}
-
-#[derive(Debug, Serialize, Deserialize, TS)]
-pub struct CheckEditorAvailabilityQuery {
-    editor_type: EditorType,
-}
-
-#[derive(Debug, Serialize, Deserialize, TS)]
-pub struct CheckEditorAvailabilityResponse {
-    available: bool,
-}
-
-async fn check_editor_availability(
-    State(_deployment): State<DeploymentImpl>,
-    Query(query): Query<CheckEditorAvailabilityQuery>,
-) -> ResponseJson<ApiResponse<CheckEditorAvailabilityResponse>> {
-    // Construct a minimal EditorConfig for checking
-    let editor_config = EditorConfig::new(
-        query.editor_type,
-        None, // custom_command
-        None, // remote_ssh_host
-        None, // remote_ssh_user
-    );
-
-    let available = editor_config.check_availability().await;
-    ResponseJson(ApiResponse::success(CheckEditorAvailabilityResponse {
-        available,
-    }))
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]

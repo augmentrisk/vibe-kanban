@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use anyhow;
 use axum::{
     Extension, Json, Router,
@@ -10,7 +8,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     middleware::from_fn_with_state,
     response::{IntoResponse, Json as ResponseJson},
-    routing::{get, post},
+    routing::get,
 };
 use db::models::{
     project::{
@@ -190,75 +188,6 @@ pub async fn delete_project(
         Err(e) => {
             tracing::error!("Failed to delete project: {}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
-}
-
-#[derive(serde::Deserialize)]
-pub struct OpenEditorRequest {
-    pub editor_type: Option<String>,
-    pub git_repo_path: Option<PathBuf>,
-}
-
-#[derive(Debug, serde::Serialize, ts_rs::TS)]
-pub struct OpenEditorResponse {
-    pub url: Option<String>,
-}
-
-pub async fn open_project_in_editor(
-    Extension(project): Extension<Project>,
-    State(deployment): State<DeploymentImpl>,
-    Json(payload): Json<Option<OpenEditorRequest>>,
-) -> Result<ResponseJson<ApiResponse<OpenEditorResponse>>, ApiError> {
-    let path = if let Some(ref req) = payload
-        && let Some(ref specified_path) = req.git_repo_path
-    {
-        specified_path.clone()
-    } else {
-        let repositories = deployment
-            .project()
-            .get_repositories(&deployment.db().pool, project.id)
-            .await?;
-
-        repositories
-            .first()
-            .map(|r| r.path.clone())
-            .ok_or_else(|| ApiError::BadRequest("Project has no repositories".to_string()))?
-    };
-
-    let editor_config = {
-        let config = deployment.config().read().await;
-        let editor_type_str = payload.as_ref().and_then(|req| req.editor_type.as_deref());
-        config.editor.with_override(editor_type_str)
-    };
-
-    match editor_config.open_file(&path).await {
-        Ok(url) => {
-            tracing::info!(
-                "Opened editor for project {} at path: {}{}",
-                project.id,
-                path.to_string_lossy(),
-                if url.is_some() { " (remote mode)" } else { "" }
-            );
-
-            deployment
-                .track_if_analytics_allowed(
-                    "project_editor_opened",
-                    serde_json::json!({
-                        "project_id": project.id.to_string(),
-                        "editor_type": payload.as_ref().and_then(|req| req.editor_type.as_ref()),
-                        "remote_mode": url.is_some(),
-                    }),
-                )
-                .await;
-
-            Ok(ResponseJson(ApiResponse::success(OpenEditorResponse {
-                url,
-            })))
-        }
-        Err(e) => {
-            tracing::error!("Failed to open editor for project {}: {:?}", project.id, e);
-            Err(ApiError::EditorOpen(e))
         }
     }
 }
@@ -458,7 +387,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             get(get_project).put(update_project).delete(delete_project),
         )
         .route("/search", get(search_project_files))
-        .route("/open-editor", post(open_project_in_editor))
         .route(
             "/repositories",
             get(get_project_repositories).post(add_project_repository),

@@ -22,11 +22,6 @@ export {
   type ProjectFormDialogProps,
   type ProjectFormDialogResult,
 } from './projects/ProjectFormDialog';
-export {
-  ProjectEditorSelectionDialog,
-  type ProjectEditorSelectionDialogProps,
-} from './projects/ProjectEditorSelectionDialog';
-
 // Task-related dialogs
 export {
   TaskFormDialog,
@@ -34,10 +29,6 @@ export {
 } from './tasks/TaskFormDialog';
 
 export { CreatePRDialog } from './tasks/CreatePRDialog';
-export {
-  EditorSelectionDialog,
-  type EditorSelectionDialogProps,
-} from './tasks/EditorSelectionDialog';
 export {
   DeleteTaskConfirmationDialog,
   type DeleteTaskConfirmationDialogProps,

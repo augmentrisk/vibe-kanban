@@ -16,14 +16,12 @@ import {
   Calendar,
   Edit,
   ExternalLink,
-  FolderOpen,
   MoreHorizontal,
   Trash2,
 } from 'lucide-react';
 import { Project, ProjectWithCreator } from 'shared/types';
 import { useEffect, useRef } from 'react';
-import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
-import { useNavigateWithSearch, useProjectRepos } from '@/hooks';
+import { useNavigateWithSearch } from '@/hooks';
 import { projectsApi } from '@/lib/api';
 import { useTranslation } from 'react-i18next';
 
@@ -38,11 +36,7 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
   const { creator } = project;
   const navigate = useNavigateWithSearch();
   const ref = useRef<HTMLDivElement>(null);
-  const handleOpenInEditor = useOpenProjectInEditor(project);
   const { t } = useTranslation('projects');
-
-  const { data: repos } = useProjectRepos(project.id);
-  const isSingleRepoProject = repos?.length === 1;
 
   useEffect(() => {
     if (isFocused && ref.current) {
@@ -69,10 +63,6 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
 
   const handleEdit = (project: Project) => {
     onEdit(project);
-  };
-
-  const handleOpenInIDE = () => {
-    handleOpenInEditor();
   };
 
   return (
@@ -120,17 +110,6 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
                   <ExternalLink className="mr-2 h-4 w-4" />
                   {t('viewProject')}
                 </DropdownMenuItem>
-                {isSingleRepoProject && (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenInIDE();
-                    }}
-                  >
-                    <FolderOpen className="mr-2 h-4 w-4" />
-                    {t('openInIDE')}
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();

@@ -298,6 +298,9 @@
       "count_one": "{{count}} unresolved conversation - resolve before sending",
       "count_other": "{{count}} unresolved conversations - resolve before sending"
     },
+    "hold": {
+      "banner": "Task is on hold - sending is disabled. Release the hold to continue."
+    },
     "thread": {
       "deleteMessage": "Delete message",
       "resolved": "Resolved",

@@ -80,6 +80,10 @@ interface SharedProps {
   onSelectSession: (sessionId: string) => void;
   /** Project ID for file search in typeahead */
   projectId: string | undefined;
+  /** Whether the task is currently on hold */
+  isOnHold: boolean | undefined;
+  /** The hold comment/reason if on hold */
+  holdComment: string | null | undefined;
   /** Number of files changed in current session */
   filesChanged: number;
   /** Number of lines added */
@@ -120,6 +124,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     sessions,
     onSelectSession,
     projectId,
+    isOnHold,
+    holdComment,
     filesChanged,
     linesAdded,
     linesRemoved,
@@ -405,12 +411,29 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     onSelectSession,
   });
 
+  // Track hold reason so it can be included as context in the next message
+  // after the hold is released
+  const lastHoldCommentRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (isOnHold && holdComment) {
+      lastHoldCommentRef.current = holdComment;
+    }
+  }, [isOnHold, holdComment]);
+
   const handleSend = useCallback(async () => {
-    const messageParts = [reviewMarkdown, localMessage].filter(Boolean);
+    // If task was recently on hold, prepend the hold reason as context
+    const holdContext = lastHoldCommentRef.current
+      ? `[Context: This task was temporarily placed on hold. Reason: ${lastHoldCommentRef.current}]`
+      : null;
+
+    const messageParts = [holdContext, reviewMarkdown, localMessage].filter(
+      Boolean
+    );
     const combinedMessage = messageParts.join('\n\n');
 
     const success = await send(combinedMessage, selectedVariant);
     if (success) {
+      lastHoldCommentRef.current = null;
       cancelDebouncedSave();
       setLocalMessage('');
       clearUploadedImages();
@@ -728,6 +751,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   return (
     <SessionChatBox
       status={status}
+      isOnHold={isOnHold}
       onViewCode={handleViewCode}
       workspaceId={workspaceId}
       projectId={projectId}

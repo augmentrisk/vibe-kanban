@@ -477,20 +477,18 @@ pub async fn place_hold(
         return Err(ApiError::BadRequest("Hold comment is required".to_string()));
     }
 
-    // Require authenticated user
-    let user = try_get_authenticated_user(&deployment, &headers)
-        .await
-        .ok_or(ApiError::Unauthorized)?;
+    // Use authenticated user if available (not required for local deployment)
+    let user = try_get_authenticated_user(&deployment, &headers).await;
 
     // Check if task is already on hold
     if task.is_on_hold() {
         return Err(ApiError::BadRequest("Task is already on hold".to_string()));
     }
 
-    Task::place_hold(&deployment.db().pool, task.id, user.id, comment.to_string()).await?;
+    Task::place_hold(&deployment.db().pool, task.id, user.as_ref().map(|u| u.id), comment.to_string()).await?;
 
     let hold_info = TaskHoldInfo {
-        user: TaskUser::from(user),
+        user: user.map(TaskUser::from),
         comment: comment.to_string(),
         held_at: chrono::Utc::now(),
     };
@@ -505,23 +503,10 @@ pub async fn place_hold(
 pub async fn release_hold(
     Extension(task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
-    headers: HeaderMap,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    // Require authenticated user
-    let user = try_get_authenticated_user(&deployment, &headers)
-        .await
-        .ok_or(ApiError::Unauthorized)?;
-
     // Check if task is on hold
     if !task.is_on_hold() {
         return Err(ApiError::BadRequest("Task is not on hold".to_string()));
-    }
-
-    // Only the holder can release the hold
-    if task.hold_user_id != Some(user.id) {
-        return Err(ApiError::Forbidden(
-            "Only the hold owner can release the hold".to_string(),
-        ));
     }
 
     Task::release_hold(&deployment.db().pool, task.id).await?;

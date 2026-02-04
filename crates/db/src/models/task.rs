@@ -65,7 +65,7 @@ impl From<User> for TaskUser {
 /// Information about a hold placed on a task
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct TaskHoldInfo {
-    pub user: TaskUser,
+    pub user: Option<TaskUser>,
     pub comment: String,
     pub held_at: DateTime<Utc>,
 }
@@ -302,20 +302,19 @@ ORDER BY t.created_at DESC"#,
                     avatar_url: rec.assignee_avatar_url.clone(),
                 }),
                 approval_count: rec.approval_count,
-                hold: rec.hold_user_id.and_then(|id| {
-                    rec.hold_comment
-                        .clone()
-                        .zip(rec.hold_at)
-                        .map(|(comment, held_at)| TaskHoldInfo {
-                            user: TaskUser {
-                                id,
-                                username: rec.hold_username.clone(),
-                                avatar_url: rec.hold_avatar_url.clone(),
-                            },
-                            comment,
-                            held_at,
-                        })
-                }),
+                hold: rec
+                    .hold_comment
+                    .clone()
+                    .zip(rec.hold_at)
+                    .map(|(comment, held_at)| TaskHoldInfo {
+                        user: rec.hold_user_id.map(|id| TaskUser {
+                            id,
+                            username: rec.hold_username.clone(),
+                            avatar_url: rec.hold_avatar_url.clone(),
+                        }),
+                        comment,
+                        held_at,
+                    }),
             })
             .collect();
 
@@ -630,14 +629,14 @@ ORDER BY t.created_at DESC"#,
 
     /// Check if the task is currently on hold
     pub fn is_on_hold(&self) -> bool {
-        self.hold_user_id.is_some()
+        self.hold_comment.is_some()
     }
 
     /// Place a hold on this task, preventing workspace sessions from being started
     pub async fn place_hold(
         pool: &SqlitePool,
         task_id: Uuid,
-        user_id: Uuid,
+        user_id: Option<Uuid>,
         comment: String,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(

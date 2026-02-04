@@ -23,7 +23,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FolderOpen, Loader2, Volume2 } from 'lucide-react';
 import {
   DEFAULT_PR_DESCRIPTION_PROMPT,
-  EditorType,
   SoundFile,
   ThemeMode,
   UiLanguage,
@@ -31,8 +30,6 @@ import {
 import { getLanguageOptions } from '@/i18n/languages';
 
 import { toPrettyCase } from '@/utils/string';
-import { useEditorAvailability } from '@/hooks/useEditorAvailability';
-import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndicator';
 import { useTheme } from '@/components/ThemeProvider';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
@@ -64,9 +61,6 @@ export function GeneralSettings() {
     null
   );
   const { setTheme } = useTheme();
-
-  // Check editor availability when draft editor changes
-  const editorAvailability = useEditorAvailability(draft?.editor.editor_type);
 
   const validateBranchPrefix = useCallback(
     (prefix: string): string | null => {
@@ -293,137 +287,6 @@ export function GeneralSettings() {
               {t('settings.general.appearance.language.helper')}
             </p>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('settings.general.editor.title')}</CardTitle>
-          <CardDescription>
-            {t('settings.general.editor.description')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="editor-type">
-              {t('settings.general.editor.type.label')}
-            </Label>
-            <Select
-              value={draft?.editor.editor_type}
-              onValueChange={(value: EditorType) =>
-                updateDraft({
-                  editor: { ...draft!.editor, editor_type: value },
-                })
-              }
-            >
-              <SelectTrigger id="editor-type">
-                <SelectValue
-                  placeholder={t('settings.general.editor.type.placeholder')}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.values(EditorType).map((editor) => (
-                  <SelectItem key={editor} value={editor}>
-                    {toPrettyCase(editor)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Editor availability status indicator */}
-            {draft?.editor.editor_type !== EditorType.CUSTOM && (
-              <EditorAvailabilityIndicator availability={editorAvailability} />
-            )}
-
-            <p className="text-sm text-muted-foreground">
-              {t('settings.general.editor.type.helper')}
-            </p>
-          </div>
-
-          {draft?.editor.editor_type === EditorType.CUSTOM && (
-            <div className="space-y-2">
-              <Label htmlFor="custom-command">
-                {t('settings.general.editor.customCommand.label')}
-              </Label>
-              <Input
-                id="custom-command"
-                placeholder={t(
-                  'settings.general.editor.customCommand.placeholder'
-                )}
-                value={draft?.editor.custom_command || ''}
-                onChange={(e) =>
-                  updateDraft({
-                    editor: {
-                      ...draft!.editor,
-                      custom_command: e.target.value || null,
-                    },
-                  })
-                }
-              />
-              <p className="text-sm text-muted-foreground">
-                {t('settings.general.editor.customCommand.helper')}
-              </p>
-            </div>
-          )}
-
-          {(draft?.editor.editor_type === EditorType.VS_CODE ||
-            draft?.editor.editor_type === EditorType.VS_CODE_INSIDERS ||
-            draft?.editor.editor_type === EditorType.CURSOR ||
-            draft?.editor.editor_type === EditorType.WINDSURF ||
-            draft?.editor.editor_type === EditorType.GOOGLE_ANTIGRAVITY ||
-            draft?.editor.editor_type === EditorType.ZED) && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="remote-ssh-host">
-                  {t('settings.general.editor.remoteSsh.host.label')}
-                </Label>
-                <Input
-                  id="remote-ssh-host"
-                  placeholder={t(
-                    'settings.general.editor.remoteSsh.host.placeholder'
-                  )}
-                  value={draft?.editor.remote_ssh_host || ''}
-                  onChange={(e) =>
-                    updateDraft({
-                      editor: {
-                        ...draft!.editor,
-                        remote_ssh_host: e.target.value || null,
-                      },
-                    })
-                  }
-                />
-                <p className="text-sm text-muted-foreground">
-                  {t('settings.general.editor.remoteSsh.host.helper')}
-                </p>
-              </div>
-
-              {draft?.editor.remote_ssh_host && (
-                <div className="space-y-2">
-                  <Label htmlFor="remote-ssh-user">
-                    {t('settings.general.editor.remoteSsh.user.label')}
-                  </Label>
-                  <Input
-                    id="remote-ssh-user"
-                    placeholder={t(
-                      'settings.general.editor.remoteSsh.user.placeholder'
-                    )}
-                    value={draft?.editor.remote_ssh_user || ''}
-                    onChange={(e) =>
-                      updateDraft({
-                        editor: {
-                          ...draft!.editor,
-                          remote_ssh_user: e.target.value || null,
-                        },
-                      })
-                    }
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    {t('settings.general.editor.remoteSsh.user.helper')}
-                  </p>
-                </div>
-              )}
-            </>
-          )}
         </CardContent>
       </Card>
 

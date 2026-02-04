@@ -7,7 +7,6 @@ export type Props = Readonly<{
   attemptBranch: string | null;
   baseBranch?: string;
   conflictedFiles: readonly string[];
-  onOpenEditor: () => void;
   onAbort: () => void;
   op?: ConflictOp | null;
   onResolve?: () => void;
@@ -41,7 +40,6 @@ export function ConflictBanner({
   attemptBranch,
   baseBranch,
   conflictedFiles,
-  onOpenEditor,
   onAbort,
   op,
   onResolve,
@@ -105,15 +103,6 @@ export function ConflictBanner({
             Resolve conflicts
           </Button>
         )}
-        <Button
-          size="sm"
-          variant="outline"
-          className="border-warning/40 text-warning-foreground hover:bg-warning/10 dark:text-warning/90"
-          onClick={onOpenEditor}
-        >
-          Open in Editor
-        </Button>
-
         <Button
           size="sm"
           variant="outline"

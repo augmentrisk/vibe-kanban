@@ -25,9 +25,6 @@ import { SearchBar } from '@/components/SearchBar';
 import { useSearch } from '@/contexts/SearchContext';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { useProject } from '@/contexts/ProjectContext';
-import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
-import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
-import { useProjectRepos } from '@/hooks';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 import { useTranslation } from 'react-i18next';
 import { Switch } from '@/components/ui/switch';
@@ -77,12 +74,8 @@ export function Navbar() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { projectId, project } = useProject();
   const { query, setQuery, active, clear, registerInputRef } = useSearch();
-  const handleOpenInEditor = useOpenProjectInEditor(project || null);
   const { data: onlineCount } = useDiscordOnlineCount();
   const { loginStatus, reloadSystem } = useUserSystem();
-
-  const { data: repos } = useProjectRepos(projectId);
-  const isSingleRepoProject = repos?.length === 1;
 
   const setSearchBarRef = useCallback(
     (node: HTMLInputElement | null) => {
@@ -114,10 +107,6 @@ export function Navbar() {
     if (projectId) {
       openTaskForm({ mode: 'create', projectId });
     }
-  };
-
-  const handleOpenInIDE = () => {
-    handleOpenInEditor();
   };
 
   const handleOpenOAuth = async () => {
@@ -237,12 +226,6 @@ export function Navbar() {
             {projectId ? (
               <>
                 <div className="flex items-center gap-1">
-                  {isSingleRepoProject && (
-                    <OpenInIdeButton
-                      onClick={handleOpenInIDE}
-                      className="h-9 w-9"
-                    />
-                  )}
                   <Button
                     variant="ghost"
                     size="icon"

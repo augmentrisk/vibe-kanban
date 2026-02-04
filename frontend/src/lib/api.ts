@@ -5,7 +5,6 @@ import {
   ApiResponse,
   Config,
   CreateFollowUpAttempt,
-  EditorType,
   CreatePrApiRequest,
   CreateTask,
   CreateAndStartTaskRequest,
@@ -46,7 +45,6 @@ import {
   ChangeTargetBranchResponse,
   RenameBranchRequest,
   RenameBranchResponse,
-  CheckEditorAvailabilityResponse,
   AvailabilityInfo,
   BaseCodingAgent,
   RunAgentSetupRequest,
@@ -67,8 +65,6 @@ import {
   UpdateMemberRoleResponse,
   Invitation,
   ListInvitationsResponse,
-  OpenEditorResponse,
-  OpenEditorRequest,
   PrError,
   Scratch,
   ScratchType,
@@ -291,17 +287,6 @@ export const projectsApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
-  },
-
-  openEditor: async (
-    id: string,
-    data: OpenEditorRequest
-  ): Promise<OpenEditorResponse> => {
-    const response = await makeRequest(`/api/projects/${id}/open-editor`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<OpenEditorResponse>(response);
   },
 
   searchFiles: async (
@@ -606,20 +591,6 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<RunAgentSetupResponse>(response);
-  },
-
-  openEditor: async (
-    attemptId: string,
-    data: OpenEditorRequest
-  ): Promise<OpenEditorResponse> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/open-editor`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
-    return handleApiResponse<OpenEditorResponse>(response);
   },
 
   getBranchStatus: async (attemptId: string): Promise<RepoBranchStatus[]> => {
@@ -1073,17 +1044,6 @@ export const repoApi = {
     return handleApiResponse<Repo[]>(response);
   },
 
-  openEditor: async (
-    repoId: string,
-    data: OpenEditorRequest
-  ): Promise<OpenEditorResponse> => {
-    const response = await makeRequest(`/api/repos/${repoId}/open-editor`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<OpenEditorResponse>(response);
-  },
-
   searchFiles: async (
     repoId: string,
     query: string,
@@ -1111,14 +1071,6 @@ export const configApi = {
       body: JSON.stringify(config),
     });
     return handleApiResponse<Config>(response);
-  },
-  checkEditorAvailability: async (
-    editorType: EditorType
-  ): Promise<CheckEditorAvailabilityResponse> => {
-    const response = await makeRequest(
-      `/api/editors/check-availability?editor_type=${encodeURIComponent(editorType)}`
-    );
-    return handleApiResponse<CheckEditorAvailabilityResponse>(response);
   },
   checkAgentAvailability: async (
     agent: BaseCodingAgent

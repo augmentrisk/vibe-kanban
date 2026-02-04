@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use command_group::AsyncCommandGroup;
 use futures::StreamExt;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use tokio::process::Command;
 use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
@@ -1699,8 +1699,30 @@ pub struct ClaudeMessage {
     pub message_type: Option<String>,
     pub role: String,
     pub model: Option<String>,
+    #[serde(deserialize_with = "deserialize_content")]
     pub content: Vec<ClaudeContentItem>,
     pub stop_reason: Option<String>,
+}
+
+/// Deserialize `content` from either a plain string or an array of content items.
+/// Claude API user messages may send content as a simple string rather than
+/// the structured array format used by assistant/tool messages.
+fn deserialize_content<'de, D>(deserializer: D) -> Result<Vec<ClaudeContentItem>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrVec {
+        String(String),
+        Vec(Vec<ClaudeContentItem>),
+    }
+
+    match StringOrVec::deserialize(deserializer) {
+        Ok(StringOrVec::String(s)) => Ok(vec![ClaudeContentItem::Text { text: s }]),
+        Ok(StringOrVec::Vec(v)) => Ok(v),
+        Err(e) => Err(e),
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]

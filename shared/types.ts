@@ -12,7 +12,7 @@ export type SharedTask = { id: string, organization_id: string, project_id: stri
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
-export type User = { id: string, github_id: bigint, username: string, email: string | null, display_name: string | null, avatar_url: string | null, created_at: Date, updated_at: Date, };
+export type User = { id: string, github_id: number, username: string, email: string | null, display_name: string | null, avatar_url: string | null, created_at: Date, updated_at: Date, };
 
 export type ClaudeOAuthTokenStatus = { has_token: boolean, token_hint: string | null, created_at: Date | null, expires_at: Date | null, last_used_at: Date | null, is_expired: boolean, };
 
@@ -50,7 +50,7 @@ export type SearchResult = { path: string, is_file: boolean, match_type: SearchM
 /**
  * Ranking score based on git history (higher = more recently/frequently edited)
  */
-score: bigint, };
+score: number, };
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
@@ -130,9 +130,9 @@ export type CreateScratch = { payload: ScratchPayload, };
 
 export type UpdateScratch = { payload: ScratchPayload, };
 
-export type Image = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
+export type Image = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: number, hash: string, created_at: string, updated_at: string, };
 
-export type CreateImage = { file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, };
+export type CreateImage = { file_path: string, original_name: string, mime_type: string | null, size_bytes: number, hash: string, };
 
 export type Workspace = { id: string, task_id: string, container_ref: string | null, branch: string, agent_working_dir: string | null, setup_completed_at: string | null, created_at: string, updated_at: string, archived: boolean, pinned: boolean, name: string | null, owner_user_id: string | null, };
 
@@ -146,7 +146,7 @@ export type SessionUser = { id: string, username: string, avatar_url: string | n
 
 export type SessionWithInitiator = { initiated_by: SessionUser | null, id: string, workspace_id: string, executor: string | null, created_at: string, updated_at: string, initiated_by_user_id: string | null, };
 
-export type ExecutionProcess = { id: string, session_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, status: ExecutionProcessStatus, exit_code: bigint | null, 
+export type ExecutionProcess = { id: string, session_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, status: ExecutionProcessStatus, exit_code: number | null, 
 /**
  * dropped: true if this process is excluded from the current
  * history view (due to restore/trimming). Hidden from logs/timeline;
@@ -168,7 +168,7 @@ export type PrMerge = { id: string, workspace_id: string, repo_id: string, creat
 
 export type MergeStatus = "open" | "merged" | "closed" | "unknown";
 
-export type PullRequestInfo = { number: bigint, url: string, status: MergeStatus, merged_at: string | null, merge_commit_sha: string | null, };
+export type PullRequestInfo = { number: number, url: string, status: MergeStatus, merged_at: string | null, merge_commit_sha: string | null, };
 
 export type ApprovalStatus = { "status": "pending" } | { "status": "approved" } | { "status": "denied", reason?: string, } | { "status": "timed_out" };
 
@@ -300,9 +300,9 @@ export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id:
 
 export type CreatePrApiRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };
 
-export type ImageResponse = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
+export type ImageResponse = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: number, hash: string, created_at: string, updated_at: string, };
 
-export type ImageMetadata = { exists: boolean, file_name: string | null, path: string | null, size_bytes: bigint | null, format: string | null, proxy_url: string | null, };
+export type ImageMetadata = { exists: boolean, file_name: string | null, path: string | null, size_bytes: number | null, format: string | null, proxy_url: string | null, };
 
 export type CreateTaskAttemptBody = { task_id: string, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, };
 
@@ -326,7 +326,7 @@ export type PrError = { "type": "cli_not_installed", provider: ProviderKind, } |
 
 export type RunScriptError = { "type": "no_script_configured" } | { "type": "process_already_running" };
 
-export type AttachPrResponse = { pr_attached: boolean, pr_url: string | null, pr_number: bigint | null, pr_status: MergeStatus | null, };
+export type AttachPrResponse = { pr_attached: boolean, pr_url: string | null, pr_number: number | null, pr_status: MergeStatus | null, };
 
 export type AttachExistingPrRequest = { repo_id: string, };
 
@@ -336,7 +336,7 @@ export type GetPrCommentsError = { "type": "no_pr_attached" } | { "type": "cli_n
 
 export type GetPrCommentsQuery = { repo_id: string, };
 
-export type UnifiedPrComment = { "comment_type": "general", id: string, author: string, author_association: string | null, body: string, created_at: string, url: string | null, } | { "comment_type": "review", id: bigint, author: string, author_association: string | null, body: string, created_at: string, url: string | null, path: string, line: bigint | null, side: string | null, diff_hunk: string | null, };
+export type UnifiedPrComment = { "comment_type": "general", id: string, author: string, author_association: string | null, body: string, created_at: string, url: string | null, } | { "comment_type": "review", id: number, author: string, author_association: string | null, body: string, created_at: string, url: string | null, path: string, line: number | null, side: string | null, diff_hunk: string | null, };
 
 export type ProviderKind = "git_hub" | "azure_dev_ops" | "unknown";
 
@@ -370,7 +370,7 @@ export type ConversationError = { "type": "not_found" } | { "type": "message_not
 
 export type ConversationEvent = { "type": "conversation_created", conversation: ConversationWithMessages, } | { "type": "message_added", conversation: ConversationWithMessages, } | { "type": "conversation_resolved", conversation: ConversationWithMessages, } | { "type": "conversation_unresolved", conversation: ConversationWithMessages, } | { "type": "conversation_deleted", conversation_id: string, } | { "type": "message_deleted", conversation: ConversationWithMessages, } | { "type": "conversation_auto_deleted", conversation_id: string, } | { "type": "refresh" };
 
-export type ReviewConversation = { id: string, workspace_id: string, file_path: string, line_number: bigint, side: string, code_line: string | null, is_resolved: boolean, resolved_at: Date | null, resolved_by_user_id: string | null, resolution_summary: string | null, created_at: Date, updated_at: Date, };
+export type ReviewConversation = { id: string, workspace_id: string, file_path: string, line_number: number, side: string, code_line: string | null, is_resolved: boolean, resolved_at: Date | null, resolved_by_user_id: string | null, resolution_summary: string | null, created_at: Date, updated_at: Date, };
 
 export type ReviewConversationMessage = { id: string, conversation_id: string, user_id: string | null, content: string, created_at: Date, updated_at: Date, };
 
@@ -378,11 +378,11 @@ export type ConversationUser = { id: string, username: string, avatar_url: strin
 
 export type MessageWithAuthor = { author: ConversationUser | null, id: string, conversation_id: string, user_id: string | null, content: string, created_at: Date, updated_at: Date, };
 
-export type ConversationWithMessages = { messages: Array<MessageWithAuthor>, resolved_by: ConversationUser | null, id: string, workspace_id: string, file_path: string, line_number: bigint, side: string, code_line: string | null, is_resolved: boolean, resolved_at: Date | null, resolved_by_user_id: string | null, resolution_summary: string | null, created_at: Date, updated_at: Date, };
+export type ConversationWithMessages = { messages: Array<MessageWithAuthor>, resolved_by: ConversationUser | null, id: string, workspace_id: string, file_path: string, line_number: number, side: string, code_line: string | null, is_resolved: boolean, resolved_at: Date | null, resolved_by_user_id: string | null, resolution_summary: string | null, created_at: Date, updated_at: Date, };
 
 export type DiffSide = "old" | "new";
 
-export type CreateConversation = { file_path: string, line_number: bigint, side: DiffSide, code_line: string | null, initial_message: string, };
+export type CreateConversation = { file_path: string, line_number: number, side: DiffSide, code_line: string | null, initial_message: string, };
 
 export type CreateMessage = { content: string, };
 
@@ -438,7 +438,7 @@ export type DiffStats = { files_changed: number, lines_added: number, lines_remo
 
 export type SharedTaskDetails = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, };
 
-export type DirectoryEntry = { name: string, path: string, is_directory: boolean, is_git_repo: boolean, last_modified: bigint | null, };
+export type DirectoryEntry = { name: string, path: string, is_directory: boolean, is_git_repo: boolean, last_modified: number | null, };
 
 export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
 
@@ -503,7 +503,7 @@ export enum BaseCodingAgent { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI =
 
 export type CodingAgent = { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid };
 
-export type AvailabilityInfo = { "type": "LOGIN_DETECTED", last_auth_timestamp: bigint, } | { "type": "INSTALLATION_FOUND" } | { "type": "NOT_FOUND" };
+export type AvailabilityInfo = { "type": "LOGIN_DETECTED", last_auth_timestamp: number, } | { "type": "INSTALLATION_FOUND" } | { "type": "NOT_FOUND" };
 
 export type CommandBuilder = { 
 /**

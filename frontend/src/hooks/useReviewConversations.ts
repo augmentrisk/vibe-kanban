@@ -111,7 +111,7 @@ export function useCreateConversation() {
     }: CreateConversationParams) => {
       const data: CreateConversation = {
         file_path: filePath,
-        line_number: BigInt(lineNumber),
+        line_number: lineNumber,
         side,
         code_line: codeLine ?? null,
         initial_message: initialMessage,

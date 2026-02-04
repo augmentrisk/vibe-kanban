@@ -100,9 +100,8 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
     const isProcessCompleted = latestProcess?.status === 'completed';
     const isProcessKilled = latestProcess?.status === 'killed';
     const isProcessFailed = latestProcess?.status === 'failed';
-    // exit_code can be null, number, or BigInt - convert to Number for comparison
     const exitCode = latestProcess?.exit_code;
-    const isExitCodeZero = exitCode == null || Number(exitCode) === 0;
+    const isExitCodeZero = exitCode == null || exitCode === 0;
     const isProcessSuccessful = isProcessCompleted && isExitCodeZero;
     const hasProcessError =
       isProcessFailed || (isProcessCompleted && !isExitCodeZero);

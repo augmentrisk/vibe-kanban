@@ -31,6 +31,7 @@ pub struct ImageResponse {
     pub file_path: String, // relative path to display in markdown
     pub original_name: String,
     pub mime_type: Option<String>,
+    #[ts(type = "number")]
     pub size_bytes: i64,
     pub hash: String,
     pub created_at: DateTime<Utc>,
@@ -67,6 +68,7 @@ pub struct ImageMetadata {
     pub exists: bool,
     pub file_name: Option<String>,
     pub path: Option<String>,
+    #[ts(type = "number | null")]
     pub size_bytes: Option<i64>,
     pub format: Option<String>,
     pub proxy_url: Option<String>,

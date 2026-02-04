@@ -16,7 +16,7 @@ export interface ImagePreviewDialogProps {
   altText: string;
   fileName?: string;
   format?: string;
-  sizeBytes?: bigint | null;
+  sizeBytes?: number | null;
 }
 
 const ImagePreviewDialogImpl = NiceModal.create<ImagePreviewDialogProps>(

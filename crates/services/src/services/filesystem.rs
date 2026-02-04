@@ -37,6 +37,7 @@ pub struct DirectoryEntry {
     pub path: PathBuf,
     pub is_directory: bool,
     pub is_git_repo: bool,
+    #[ts(type = "number | null")]
     pub last_modified: Option<u64>,
 }
 

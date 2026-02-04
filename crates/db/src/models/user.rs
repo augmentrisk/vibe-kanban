@@ -17,6 +17,7 @@ pub enum UserError {
 #[ts(export)]
 pub struct User {
     pub id: Uuid,
+    #[ts(type = "number")]
     pub github_id: i64,
     pub username: String,
     pub email: Option<String>,

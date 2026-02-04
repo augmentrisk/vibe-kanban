@@ -23,6 +23,10 @@ interface WorkspacesMainProps {
   isLoading: boolean;
   containerRef: RefObject<HTMLElement | null>;
   projectId?: string;
+  /** Whether the task is currently on hold */
+  isOnHold?: boolean;
+  /** The hold comment/reason if on hold */
+  holdComment?: string | null;
   /** Whether user is creating a new session */
   isNewSessionMode?: boolean;
   /** Callback to start new session mode */
@@ -38,6 +42,8 @@ export function WorkspacesMain({
   isLoading,
   containerRef,
   projectId,
+  isOnHold,
+  holdComment,
   isNewSessionMode,
   onStartNewSession,
   diffStats,
@@ -102,6 +108,8 @@ export function WorkspacesMain({
                       })}
                 sessions={sessions}
                 projectId={projectId}
+                isOnHold={isOnHold}
+                holdComment={holdComment}
                 filesChanged={diffStats?.filesChanged ?? 0}
                 linesAdded={diffStats?.linesAdded ?? 0}
                 linesRemoved={diffStats?.linesRemoved ?? 0}

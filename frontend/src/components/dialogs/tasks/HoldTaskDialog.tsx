@@ -38,10 +38,12 @@ const HoldTaskDialogImpl = NiceModal.create<HoldTaskDialogProps>((props) => {
       return;
     }
     modal.resolve(trimmedComment);
+    modal.hide();
   };
 
   const handleCancel = () => {
     modal.resolve('canceled' as ConfirmResult);
+    modal.hide();
   };
 
   return (

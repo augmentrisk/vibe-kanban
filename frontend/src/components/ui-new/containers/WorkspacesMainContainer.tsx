@@ -48,6 +48,8 @@ export function WorkspacesMainContainer({
       isLoading={isLoading}
       containerRef={containerRef}
       projectId={task?.project_id}
+      isOnHold={Boolean(task?.hold_comment)}
+      holdComment={task?.hold_comment ?? null}
       isNewSessionMode={isNewSessionMode}
       onStartNewSession={onStartNewSession}
       diffStats={{

@@ -10,6 +10,7 @@ import {
   ChatsCircleIcon,
   TrashIcon,
   WarningIcon,
+  PauseCircleIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -141,6 +142,8 @@ interface UnresolvedConversationsProps {
 
 interface SessionChatBoxProps {
   status: ExecutionStatus;
+  /** Whether the task is currently on hold */
+  isOnHold?: boolean;
   editor: EditorProps;
   actions: ActionsProps;
   session: SessionProps;
@@ -171,6 +174,7 @@ interface SessionChatBoxProps {
  */
 export function SessionChatBox({
   status,
+  isOnHold,
   editor,
   actions,
   session,
@@ -217,6 +221,7 @@ export function SessionChatBox({
 
   // Derived state from status
   const isDisabled =
+    isOnHold ||
     status === 'sending' ||
     status === 'stopping' ||
     feedbackMode?.isSubmitting ||
@@ -225,7 +230,9 @@ export function SessionChatBox({
   const hasContent =
     editor.value.trim().length > 0 || (reviewComments?.count ?? 0) > 0;
   const canSend =
-    hasContent && !['sending', 'stopping', 'queue-loading'].includes(status);
+    hasContent &&
+    !isOnHold &&
+    !['sending', 'stopping', 'queue-loading'].includes(status);
   const isQueued = status === 'queued';
   const isRunning = status === 'running' || status === 'queued';
   const showRunningAnimation =
@@ -484,6 +491,21 @@ export function SessionChatBox({
 
   const renderBanner = () => {
     const banners: React.ReactNode[] = [];
+
+    // Hold banner
+    if (isOnHold) {
+      banners.push(
+        <div
+          key="on-hold"
+          className="bg-warning/10 border-b border-warning/20 px-double py-base flex items-center gap-base"
+        >
+          <PauseCircleIcon className="h-4 w-4 text-warning flex-shrink-0" />
+          <span className="text-sm text-warning flex-1">
+            {t('conversation.hold.banner')}
+          </span>
+        </div>
+      );
+    }
 
     if (unresolvedConversations && unresolvedConversations.count > 0) {
       banners.push(

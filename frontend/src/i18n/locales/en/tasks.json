@@ -219,7 +219,8 @@
     "runCleanupScript": "Run cleanup script",
     "noSetupScript": "No setup script configured for this project",
     "noCleanupScript": "No cleanup script configured for this project",
-    "scriptsDisabledWhileRunning": "Cannot run scripts while a process is running"
+    "scriptsDisabledWhileRunning": "Cannot run scripts while a process is running",
+    "releaseHold": "Release Hold"
   },
   "todos": {
     "title_one": "Todos ({{count}})",

@@ -27,7 +27,7 @@ import {
 //
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { ScratchType, type TaskWithAttemptStatus } from 'shared/types';
-import { useBranchStatus } from '@/hooks';
+import { useBranchStatus, useTaskMutations } from '@/hooks';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { cn } from '@/lib/utils';
@@ -41,7 +41,6 @@ import { useProject } from '@/contexts/ProjectContext';
 //
 import { VariantSelector } from '@/components/tasks/VariantSelector';
 import { HoldTaskDialog } from '@/components/dialogs/tasks/HoldTaskDialog';
-import { useTaskMutations } from '@/hooks';
 import { useAttemptBranch } from '@/hooks/useAttemptBranch';
 import { FollowUpConflictSection } from '@/components/tasks/follow-up/FollowUpConflictSection';
 import { ClickedElementsBanner } from '@/components/tasks/ClickedElementsBanner';
@@ -83,6 +82,7 @@ export function TaskFollowUpSection({
   const { isAttemptRunning, stopExecution, isStopping, processes } =
     useAttemptExecution(workspaceId, task.id);
 
+  // Hold state mutations
   const { placeHold, releaseHold } = useTaskMutations(projectId);
   const isOnHold = Boolean(task.hold);
 
@@ -382,6 +382,7 @@ export function TaskFollowUpSection({
 
     if (isRetryActive) return false; // disable typing while retry editor is active
     if (hasPendingApproval) return false; // disable typing during approval
+    if (isOnHold) return false; // disable typing while task is on hold
     // Note: isQueued no longer blocks typing - editing auto-cancels the queue
     return true;
   }, [
@@ -390,6 +391,7 @@ export function TaskFollowUpSection({
     isSendingFollowUp,
     isRetryActive,
     hasPendingApproval,
+    isOnHold,
   ]);
 
   const canSendFollowUp = useMemo(() => {
@@ -412,7 +414,7 @@ export function TaskFollowUpSection({
     clickedMarkdown,
     localMessage,
   ]);
-  const isEditable = !isRetryActive && !hasPendingApproval;
+  const isEditable = !isRetryActive && !hasPendingApproval && !isOnHold;
 
   const hasAnyScript = true;
 
@@ -878,6 +880,7 @@ export function TaskFollowUpSection({
                   onClick={handleQueueMessage}
                   disabled={
                     isQueueLoading ||
+                    isOnHold ||
                     (!localMessage.trim() &&
                       !conflictResolutionInstructions &&
                       !reviewMarkdown &&
@@ -925,7 +928,7 @@ export function TaskFollowUpSection({
               )}
               <Button
                 onClick={onSendFollowUp}
-                disabled={!canSendFollowUp || !isEditable}
+                disabled={!canSendFollowUp || !isEditable || isOnHold}
                 size="sm"
               >
                 {isSendingFollowUp ? (

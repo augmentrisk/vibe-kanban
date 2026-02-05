@@ -13,8 +13,11 @@ use axum::{
     routing::{delete, get, post, put},
 };
 use db::models::{
+    execution_process::{ExecutionProcess, ExecutionProcessRunReason},
+    execution_process_logs::ExecutionProcessLogs,
     image::TaskImage,
     repo::{Repo, RepoError},
+    session::Session,
     task::{
         CreateTask, Task, TaskHoldInfo, TaskUser, TaskWithAttemptStatus, TaskWithUsers, UpdateTask,
     },
@@ -22,7 +25,10 @@ use db::models::{
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
 use deployment::Deployment;
-use executors::profile::ExecutorProfileId;
+use executors::{
+    logs::{NormalizedEntry, NormalizedEntryType, utils::patch::ConversationPatch},
+    profile::ExecutorProfileId,
+};
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use services::services::{
@@ -30,7 +36,7 @@ use services::services::{
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::{api::oauth::LoginStatus, response::ApiResponse};
+use utils::{api::oauth::LoginStatus, log_msg::LogMsg, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{
@@ -448,6 +454,59 @@ async fn ensure_shared_task_auth(
 
 // ===== Hold/Release endpoints =====
 
+/// Helper function to add a hold-related system message to the task's latest execution process
+async fn add_hold_message_to_history(
+    pool: &sqlx::SqlitePool,
+    task_id: Uuid,
+    message: &str,
+) -> Result<(), ApiError> {
+    // Get the latest workspace for this task
+    let workspaces = Workspace::fetch_all(pool, Some(task_id)).await?;
+    let Some(workspace) = workspaces.first() else {
+        // No workspace yet - no chat history to add to
+        return Ok(());
+    };
+
+    // Get the latest session for this workspace
+    let Some(session) = Session::find_latest_by_workspace_id(pool, workspace.id).await? else {
+        // No session yet - no chat history to add to
+        return Ok(());
+    };
+
+    // Get the latest coding agent execution process for this session
+    let Some(execution_process) = ExecutionProcess::find_latest_by_session_and_run_reason(
+        pool,
+        session.id,
+        &ExecutionProcessRunReason::CodingAgent,
+    )
+    .await?
+    else {
+        // No execution process yet - no chat history to add to
+        return Ok(());
+    };
+
+    // Create a system message entry
+    let entry = NormalizedEntry {
+        timestamp: Some(chrono::Utc::now().to_rfc3339()),
+        entry_type: NormalizedEntryType::SystemMessage,
+        content: message.to_string(),
+        metadata: None,
+    };
+
+    // Create a patch to add the entry
+    let patch = ConversationPatch::add_normalized_entry(999, entry);
+    if let Ok(json_line) = serde_json::to_string::<LogMsg>(&LogMsg::JsonPatch(patch)) {
+        let _ = ExecutionProcessLogs::append_log_line(
+            pool,
+            execution_process.id,
+            &format!("{json_line}\n"),
+        )
+        .await;
+    }
+
+    Ok(())
+}
+
 /// Request body for placing a hold on a task
 #[derive(Debug, Deserialize, TS)]
 #[ts(export)]
@@ -494,10 +553,24 @@ pub async fn place_hold(
     .await?;
 
     let hold_info = TaskHoldInfo {
-        user: user.map(TaskUser::from),
+        user: user.clone().map(TaskUser::from),
         comment: comment.to_string(),
         held_at: chrono::Utc::now(),
     };
+
+    // Add hold message to chat history
+    let user_display = user
+        .as_ref()
+        .map(|u| u.display_name.clone().unwrap_or_else(|| u.username.clone()))
+        .unwrap_or_else(|| "Someone".to_string());
+    let hold_message = format!(
+        "⏸️ **Task put on hold** by {}\n\n**Reason:** {}",
+        user_display, comment
+    );
+    if let Err(e) = add_hold_message_to_history(&deployment.db().pool, task.id, &hold_message).await
+    {
+        tracing::warn!("Failed to add hold message to chat history: {}", e);
+    }
 
     Ok(ResponseJson(ApiResponse::success(HoldResponse {
         task_id: task.id,
@@ -509,13 +582,29 @@ pub async fn place_hold(
 pub async fn release_hold(
     Extension(task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
+    headers: HeaderMap,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     // Check if task is on hold
     if !task.is_on_hold() {
         return Err(ApiError::BadRequest("Task is not on hold".to_string()));
     }
 
+    // Get user info for the message before releasing
+    let user = try_get_authenticated_user(&deployment, &headers).await;
+
     Task::release_hold(&deployment.db().pool, task.id).await?;
+
+    // Add release message to chat history
+    let user_display = user
+        .as_ref()
+        .map(|u| u.display_name.clone().unwrap_or_else(|| u.username.clone()))
+        .unwrap_or_else(|| "Someone".to_string());
+    let release_message = format!("▶️ **Hold released** by {}", user_display);
+    if let Err(e) =
+        add_hold_message_to_history(&deployment.db().pool, task.id, &release_message).await
+    {
+        tracing::warn!("Failed to add release message to chat history: {}", e);
+    }
 
     Ok(ResponseJson(ApiResponse::success(())))
 }

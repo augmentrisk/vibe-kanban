@@ -592,10 +592,20 @@ impl LocalContainerService {
                         ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed
                     );
 
+                    // Also check if task is on hold - don't execute queued messages for held tasks
+                    let task_on_hold = ctx.task.is_on_hold();
+
                     if let Some(queued_msg) =
                         container.queued_message_service.take_queued(ctx.session.id)
                     {
-                        if should_execute_queued {
+                        if task_on_hold {
+                            // Task is on hold - discard the queued message and finalize
+                            tracing::info!(
+                                "Discarding queued message for session {} because task is on hold",
+                                ctx.session.id
+                            );
+                            container.finalize_task(&ctx).await;
+                        } else if should_execute_queued {
                             tracing::info!(
                                 "Found queued message for session {}, starting follow-up execution",
                                 ctx.session.id

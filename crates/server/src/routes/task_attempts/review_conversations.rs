@@ -144,7 +144,7 @@ pub async fn list_unresolved_conversations(
 pub async fn get_conversation(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    Path((_workspace_id, conversation_id)): Path<(Uuid, Uuid)>,
+    Path(conversation_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<ConversationWithMessages, ConversationError>>, ApiError> {
     let pool = &deployment.db().pool;
 
@@ -224,7 +224,7 @@ pub async fn create_conversation(
 pub async fn add_message(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    Path((_workspace_id, conversation_id)): Path<(Uuid, Uuid)>,
+    Path(conversation_id): Path<Uuid>,
     headers: HeaderMap,
     Json(payload): Json<CreateMessage>,
 ) -> Result<ResponseJson<ApiResponse<AddMessageResponse, ConversationError>>, ApiError> {
@@ -298,7 +298,7 @@ pub async fn add_message(
 pub async fn resolve_conversation(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    Path((_workspace_id, conversation_id)): Path<(Uuid, Uuid)>,
+    Path(conversation_id): Path<Uuid>,
     headers: HeaderMap,
     Json(payload): Json<ResolveConversation>,
 ) -> Result<ResponseJson<ApiResponse<ResolveConversationResponse, ConversationError>>, ApiError> {
@@ -365,7 +365,7 @@ pub async fn resolve_conversation(
 pub async fn unresolve_conversation(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    Path((_workspace_id, conversation_id)): Path<(Uuid, Uuid)>,
+    Path(conversation_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<ResolveConversationResponse, ConversationError>>, ApiError> {
     let pool = &deployment.db().pool;
 
@@ -428,7 +428,7 @@ pub async fn unresolve_conversation(
 pub async fn delete_conversation(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    Path((_workspace_id, conversation_id)): Path<(Uuid, Uuid)>,
+    Path(conversation_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<(), ConversationError>>, ApiError> {
     let pool = &deployment.db().pool;
 
@@ -482,7 +482,7 @@ pub async fn delete_conversation(
 pub async fn delete_message(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    Path((_workspace_id, conversation_id, message_id)): Path<(Uuid, Uuid, Uuid)>,
+    Path((conversation_id, message_id)): Path<(Uuid, Uuid)>,
 ) -> Result<ResponseJson<ApiResponse<ConversationWithMessages, ConversationError>>, ApiError> {
     let pool = &deployment.db().pool;
 

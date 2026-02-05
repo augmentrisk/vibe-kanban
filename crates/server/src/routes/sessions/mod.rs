@@ -136,14 +136,14 @@ pub async fn follow_up(
         )))?;
 
     // Block follow-up if task is on hold
-    if let Some(task) = workspace.parent_task(pool).await? {
-        if task.is_on_hold() {
-            let hold_comment = task.hold_comment.as_deref().unwrap_or("No reason given");
-            return Err(ApiError::BadRequest(format!(
-                "Task is on hold: {}. Release the hold before sending a follow-up message.",
-                hold_comment
-            )));
-        }
+    if let Some(task) = workspace.parent_task(pool).await?
+        && task.is_on_hold()
+    {
+        let hold_comment = task.hold_comment.as_deref().unwrap_or("No reason given");
+        return Err(ApiError::BadRequest(format!(
+            "Task is on hold: {}. Release the hold before sending a follow-up message.",
+            hold_comment
+        )));
     }
 
     tracing::info!("{:?}", workspace);

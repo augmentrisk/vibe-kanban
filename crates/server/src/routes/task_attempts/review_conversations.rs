@@ -131,8 +131,19 @@ pub async fn list_unresolved_conversations(
     // Load messages for each conversation
     let mut result = Vec::with_capacity(conversations.len());
     for conv in conversations {
-        if let Some(cwm) = load_conversation_with_messages(pool, conv.id).await? {
-            result.push(cwm);
+        match load_conversation_with_messages(pool, conv.id).await {
+            Ok(Some(cwm)) => result.push(cwm),
+            Ok(None) => {
+                // Conversation was deleted between queries, skip it
+            }
+            Err(e) => {
+                // Log error but continue with other conversations
+                tracing::error!(
+                    "Database error loading conversation {} in list: {}",
+                    conv.id,
+                    e
+                );
+            }
         }
     }
 
@@ -148,7 +159,19 @@ pub async fn get_conversation(
 ) -> Result<ResponseJson<ApiResponse<ConversationWithMessages, ConversationError>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    let conversation = load_conversation_with_messages(pool, conversation_id).await?;
+    let conversation = match load_conversation_with_messages(pool, conversation_id).await {
+        Ok(conv) => conv,
+        Err(e) => {
+            tracing::error!(
+                "Database error loading conversation {}: {}",
+                conversation_id,
+                e
+            );
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                ConversationError::NotFound,
+            )));
+        }
+    };
 
     match conversation {
         Some(c) if c.conversation.workspace_id == workspace.id => {
@@ -185,9 +208,30 @@ pub async fn create_conversation(
     match conversation {
         Ok(conv) => {
             // Load the full conversation with messages
-            let full_conversation = load_conversation_with_messages(pool, conv.id)
-                .await?
-                .ok_or(ReviewConversationError::NotFound)?;
+            let full_conversation = match load_conversation_with_messages(pool, conv.id).await {
+                Ok(Some(c)) => c,
+                Ok(None) => {
+                    tracing::error!(
+                        "Conversation {} not found after creation",
+                        conv.id
+                    );
+                    return Ok(ResponseJson(ApiResponse::error_with_data(
+                        ConversationError::NotFound,
+                    )));
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "Database error loading conversation {} after creation: {}",
+                        conv.id,
+                        e
+                    );
+                    return Ok(ResponseJson(ApiResponse::error_with_data(
+                        ConversationError::ValidationError {
+                            message: "Failed to load conversation after creation".to_string(),
+                        },
+                    )));
+                }
+            };
 
             broadcast_event(
                 &deployment,
@@ -262,9 +306,32 @@ pub async fn add_message(
     match result {
         Ok(_) => {
             // Reload the full conversation
-            let full_conversation = load_conversation_with_messages(pool, conversation_id)
-                .await?
-                .ok_or(ReviewConversationError::NotFound)?;
+            let full_conversation = match load_conversation_with_messages(pool, conversation_id)
+                .await
+            {
+                Ok(Some(conv)) => conv,
+                Ok(None) => {
+                    tracing::error!(
+                        "Conversation {} not found after adding message",
+                        conversation_id
+                    );
+                    return Ok(ResponseJson(ApiResponse::error_with_data(
+                        ConversationError::NotFound,
+                    )));
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "Database error loading conversation {} after adding message: {}",
+                        conversation_id,
+                        e
+                    );
+                    return Ok(ResponseJson(ApiResponse::error_with_data(
+                        ConversationError::ValidationError {
+                            message: "Failed to load conversation after adding message".to_string(),
+                        },
+                    )));
+                }
+            };
 
             broadcast_event(
                 &deployment,
@@ -327,9 +394,32 @@ pub async fn resolve_conversation(
     match result {
         Ok(_) => {
             // Reload the full conversation
-            let full_conversation = load_conversation_with_messages(pool, conversation_id)
-                .await?
-                .ok_or(ReviewConversationError::NotFound)?;
+            let full_conversation = match load_conversation_with_messages(pool, conversation_id)
+                .await
+            {
+                Ok(Some(conv)) => conv,
+                Ok(None) => {
+                    tracing::error!(
+                        "Conversation {} not found after resolving",
+                        conversation_id
+                    );
+                    return Ok(ResponseJson(ApiResponse::error_with_data(
+                        ConversationError::NotFound,
+                    )));
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "Database error loading conversation {} after resolving: {}",
+                        conversation_id,
+                        e
+                    );
+                    return Ok(ResponseJson(ApiResponse::error_with_data(
+                        ConversationError::ValidationError {
+                            message: "Failed to load conversation after resolving".to_string(),
+                        },
+                    )));
+                }
+            };
 
             broadcast_event(
                 &deployment,
@@ -390,9 +480,32 @@ pub async fn unresolve_conversation(
     match result {
         Ok(_) => {
             // Reload the full conversation
-            let full_conversation = load_conversation_with_messages(pool, conversation_id)
-                .await?
-                .ok_or(ReviewConversationError::NotFound)?;
+            let full_conversation = match load_conversation_with_messages(pool, conversation_id)
+                .await
+            {
+                Ok(Some(conv)) => conv,
+                Ok(None) => {
+                    tracing::error!(
+                        "Conversation {} not found after unresolving",
+                        conversation_id
+                    );
+                    return Ok(ResponseJson(ApiResponse::error_with_data(
+                        ConversationError::NotFound,
+                    )));
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "Database error loading conversation {} after unresolving: {}",
+                        conversation_id,
+                        e
+                    );
+                    return Ok(ResponseJson(ApiResponse::error_with_data(
+                        ConversationError::ValidationError {
+                            message: "Failed to load conversation after unresolving".to_string(),
+                        },
+                    )));
+                }
+            };
 
             broadcast_event(
                 &deployment,

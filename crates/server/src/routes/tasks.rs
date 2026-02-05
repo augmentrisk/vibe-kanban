@@ -25,7 +25,10 @@ use db::models::{
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
 use deployment::Deployment;
-use executors::profile::ExecutorProfileId;
+use executors::{
+    logs::{NormalizedEntry, NormalizedEntryType, utils::patch::ConversationPatch},
+    profile::ExecutorProfileId,
+};
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use services::services::{
@@ -35,7 +38,6 @@ use sqlx::Error as SqlxError;
 use ts_rs::TS;
 use utils::{api::oauth::LoginStatus, log_msg::LogMsg, response::ApiResponse};
 use uuid::Uuid;
-use executors::logs::{NormalizedEntry, NormalizedEntryType, utils::patch::ConversationPatch};
 
 use crate::{
     DeploymentImpl,
@@ -494,7 +496,12 @@ async fn add_hold_message_to_history(
     // Create a patch to add the entry
     let patch = ConversationPatch::add_normalized_entry(999, entry);
     if let Ok(json_line) = serde_json::to_string::<LogMsg>(&LogMsg::JsonPatch(patch)) {
-        let _ = ExecutionProcessLogs::append_log_line(pool, execution_process.id, &format!("{json_line}\n")).await;
+        let _ = ExecutionProcessLogs::append_log_line(
+            pool,
+            execution_process.id,
+            &format!("{json_line}\n"),
+        )
+        .await;
     }
 
     Ok(())

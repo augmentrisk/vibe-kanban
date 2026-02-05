@@ -64,7 +64,7 @@ function MessageItem({
             </button>
           )}
         </div>
-        <div className="text-sm text-normal whitespace-pre-wrap break-words">
+        <div className="text-sm text-normal whitespace-pre-wrap break-words pl-7">
           {message.content}
         </div>
       </div>

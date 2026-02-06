@@ -15,6 +15,7 @@ pub mod git_host;
 pub mod github_oauth;
 pub mod image;
 pub mod local_session;
+pub mod main_branch_sync;
 pub mod notification;
 pub mod oauth_credentials;
 pub mod pr_monitor;

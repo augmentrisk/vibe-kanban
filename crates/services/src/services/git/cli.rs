@@ -712,6 +712,12 @@ impl GitCli {
             .map(|_| ())
     }
 
+    /// Resolve a git reference to its commit SHA
+    pub fn rev_parse(&self, repo_path: &Path, rev: &str) -> Result<String, GitCliError> {
+        let output = self.git(repo_path, ["rev-parse", rev])?;
+        Ok(output.trim().to_string())
+    }
+
     pub fn abort_merge(&self, worktree_path: &Path) -> Result<(), GitCliError> {
         if !self.is_merge_in_progress(worktree_path)? {
             return Ok(());

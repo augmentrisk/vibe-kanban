@@ -186,7 +186,10 @@ impl MainBranchSyncService {
         let remote_commit = match self.get_branch_commit(repo_path, &remote_branch) {
             Ok(commit) => commit,
             Err(e) => {
-                debug!("Could not get remote commit for branch {}: {}", remote_branch, e);
+                debug!(
+                    "Could not get remote commit for branch {}: {}",
+                    remote_branch, e
+                );
                 return Ok(false);
             }
         };

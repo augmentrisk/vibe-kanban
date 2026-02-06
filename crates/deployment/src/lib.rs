@@ -28,6 +28,7 @@ use services::services::{
     filesystem_watcher::FilesystemWatcherError,
     git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
+    main_branch_sync::MainBranchSyncService,
     pr_monitor::PrMonitorService,
     project::ProjectService,
     queued_message::QueuedMessageService,
@@ -136,6 +137,11 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 analytics_service: analytics_service.clone(),
             });
         PrMonitorService::spawn(db, analytics).await
+    }
+
+    async fn spawn_main_branch_sync_service(&self) -> tokio::task::JoinHandle<()> {
+        let db = self.db().clone();
+        MainBranchSyncService::spawn(db).await
     }
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {

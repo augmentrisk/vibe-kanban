@@ -20,7 +20,6 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import '@/styles/diff-style-overrides.css';
-import type { Workspace } from 'shared/types';
 import {
   useReview,
   diffSideToSplitSide,
@@ -45,7 +44,6 @@ type Props = {
   diff: Diff;
   expanded: boolean;
   onToggle: () => void;
-  selectedAttempt: Workspace | null;
 };
 
 function labelAndIcon(diff: Diff) {

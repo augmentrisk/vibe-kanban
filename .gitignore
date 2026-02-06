@@ -88,3 +88,4 @@ vibe-kanban-cloud/
 
 # Docker dev environment cache
 .docker-cache/
+claude_code_oauth_token.txt

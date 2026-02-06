@@ -45,7 +45,6 @@ type Props = {
   diff: Diff;
   expanded: boolean;
   onToggle: () => void;
-  selectedAttempt: Workspace | null;
 };
 
 function labelAndIcon(diff: Diff) {
@@ -83,7 +82,6 @@ export default function DiffCard({
   diff,
   expanded,
   onToggle,
-  selectedAttempt,
 }: Props) {
   const { config } = useUserSystem();
   const theme = getActualTheme(config?.theme);

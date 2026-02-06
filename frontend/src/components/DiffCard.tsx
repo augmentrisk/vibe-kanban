@@ -20,7 +20,6 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import '@/styles/diff-style-overrides.css';
-import type { Workspace } from 'shared/types';
 import {
   useReview,
   diffSideToSplitSide,

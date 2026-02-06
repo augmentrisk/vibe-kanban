@@ -83,6 +83,7 @@ export default function DiffCard({
   diff,
   expanded,
   onToggle,
+  selectedAttempt,
 }: Props) {
   const { config } = useUserSystem();
   const theme = getActualTheme(config?.theme);

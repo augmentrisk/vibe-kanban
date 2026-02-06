@@ -1,7 +1,6 @@
-use std::path::Path;
-use std::time::Duration;
+use std::{path::Path, time::Duration};
 
-use db::{models::repo::Repo, DBService};
+use db::{DBService, models::repo::Repo};
 use thiserror::Error;
 use tokio::time::interval;
 use tracing::{debug, error, info, warn};
@@ -177,10 +176,7 @@ impl MainBranchSyncService {
         let local_commit = match self.get_branch_commit(repo_path, branch) {
             Ok(commit) => commit,
             Err(e) => {
-                debug!(
-                    "Could not get local commit for branch {}: {}",
-                    branch, e
-                );
+                debug!("Could not get local commit for branch {}: {}", branch, e);
                 return Ok(false);
             }
         };
@@ -190,10 +186,7 @@ impl MainBranchSyncService {
         let remote_commit = match self.get_branch_commit(repo_path, &remote_branch) {
             Ok(commit) => commit,
             Err(e) => {
-                debug!(
-                    "Could not get remote commit for branch {}: {}",
-                    remote_branch, e
-                );
+                debug!("Could not get remote commit for branch {}: {}", remote_branch, e);
                 return Ok(false);
             }
         };

@@ -95,6 +95,8 @@ import {
   ResolveConversationResponse,
   ConversationError,
   HoldResponse,
+  MainBranchInfo,
+  PullMainResult,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -1042,6 +1044,20 @@ export const repoApi = {
       body: JSON.stringify({ ids }),
     });
     return handleApiResponse<Repo[]>(response);
+  },
+
+  getMainBranchInfo: async (repoId: string): Promise<MainBranchInfo> => {
+    const response = await makeRequest(
+      `/api/repos/${repoId}/main-branch-info`
+    );
+    return handleApiResponse<MainBranchInfo>(response);
+  },
+
+  pullMain: async (repoId: string): Promise<PullMainResult> => {
+    const response = await makeRequest(`/api/repos/${repoId}/pull-main`, {
+      method: 'POST',
+    });
+    return handleApiResponse<PullMainResult>(response);
   },
 
   searchFiles: async (

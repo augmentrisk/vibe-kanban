@@ -19,6 +19,9 @@ import {
   Plus,
   LogOut,
   LogIn,
+  GitBranch,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { SearchBar } from '@/components/SearchBar';
@@ -38,6 +41,7 @@ import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { oauthApi } from '@/lib/api';
 import { UserMenu } from '@/components/UserMenu';
+import { useMainBranchInfo } from '@/hooks/useMainBranchInfo';
 
 const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
 
@@ -76,6 +80,11 @@ export function Navbar() {
   const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const { data: onlineCount } = useDiscordOnlineCount();
   const { loginStatus, reloadSystem } = useUserSystem();
+  const {
+    info: mainBranchInfo,
+    pull: pullMain,
+    isPulling,
+  } = useMainBranchInfo(projectId);
 
   const setSearchBarRef = useCallback(
     (node: HTMLInputElement | null) => {
@@ -184,6 +193,46 @@ export function Navbar() {
                   : 'online'}
               </span>
             </a>
+            {mainBranchInfo && (
+              <div className="hidden sm:inline-flex items-center ml-3 text-xs font-medium overflow-hidden border h-6">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="flex items-center gap-1 px-2 font-mono text-muted-foreground">
+                        <GitBranch className="h-3 w-3 shrink-0" />
+                        <span className="text-foreground">
+                          {mainBranchInfo.short_sha}
+                        </span>
+                        <span className="max-w-[200px] truncate">
+                          {mainBranchInfo.subject}
+                        </span>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <div className="text-xs">
+                        <div className="font-semibold">
+                          {mainBranchInfo.branch}
+                        </div>
+                        <div className="font-mono">{mainBranchInfo.sha}</div>
+                        <div className="mt-1">{mainBranchInfo.subject}</div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <button
+                  onClick={() => pullMain()}
+                  disabled={isPulling}
+                  className="flex items-center gap-1 px-2 h-full border-l bg-muted hover:bg-accent transition-colors disabled:opacity-50"
+                  aria-label="Update main branch"
+                >
+                  {isPulling ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3" />
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="hidden sm:flex items-center gap-2">

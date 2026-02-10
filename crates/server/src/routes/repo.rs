@@ -10,8 +10,8 @@ use db::models::{
     repo::{Repo, UpdateRepo},
 };
 use deployment::Deployment;
-use serde::Deserialize;
-use services::services::{file_search::SearchQuery, git::GitBranch};
+use serde::{Deserialize, Serialize};
+use services::services::{file_search::SearchQuery, git::{GitBranch, GitCli}};
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -189,6 +189,117 @@ pub async fn search_repo(
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct MainBranchInfo {
+    pub branch: String,
+    pub sha: String,
+    pub short_sha: String,
+    pub subject: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct PullMainResult {
+    pub updated: bool,
+    pub branch: String,
+    pub sha: String,
+    pub short_sha: String,
+    pub subject: String,
+}
+
+pub async fn get_main_branch_info(
+    State(deployment): State<DeploymentImpl>,
+    Path(repo_id): Path<Uuid>,
+) -> Result<ResponseJson<ApiResponse<MainBranchInfo>>, ApiError> {
+    let repo = deployment
+        .repo()
+        .get_by_id(&deployment.db().pool, repo_id)
+        .await?;
+
+    let target_branch = repo
+        .default_target_branch
+        .as_deref()
+        .unwrap_or("main")
+        .to_string();
+
+    let git = deployment.git();
+    let sha = git.get_branch_oid(&repo.path, &target_branch)?;
+    let subject = git.get_commit_subject(&repo.path, &sha)?;
+    let short_sha = sha.chars().take(7).collect::<String>();
+
+    Ok(ResponseJson(ApiResponse::success(MainBranchInfo {
+        branch: target_branch,
+        sha,
+        short_sha,
+        subject,
+    })))
+}
+
+pub async fn pull_main_branch(
+    State(deployment): State<DeploymentImpl>,
+    Path(repo_id): Path<Uuid>,
+) -> Result<ResponseJson<ApiResponse<PullMainResult>>, ApiError> {
+    let repo = deployment
+        .repo()
+        .get_by_id(&deployment.db().pool, repo_id)
+        .await?;
+
+    let target_branch = repo
+        .default_target_branch
+        .as_deref()
+        .unwrap_or("main")
+        .to_string();
+
+    let git_cli = GitCli::new();
+
+    // Check if the repository has a remote origin
+    let remote_url = git_cli
+        .get_remote_url(&repo.path, "origin")
+        .map_err(|_| ApiError::BadRequest("Repository has no origin remote".to_string()))?;
+
+    // Fetch the target branch from origin
+    let refspec = format!("refs/heads/{0}:refs/remotes/origin/{0}", target_branch);
+    git_cli
+        .fetch_with_refspec(&repo.path, &remote_url, &refspec)
+        .map_err(|e| ApiError::BadRequest(format!("Failed to fetch from origin: {}", e)))?;
+
+    // Get local and remote commits
+    let local_sha = git_cli
+        .rev_parse(&repo.path, &target_branch)
+        .unwrap_or_default();
+    let remote_sha = git_cli
+        .rev_parse(&repo.path, &format!("origin/{}", target_branch))
+        .map_err(|e| ApiError::BadRequest(format!("Failed to resolve remote branch: {}", e)))?;
+
+    let updated = local_sha != remote_sha;
+    if updated {
+        // Fast-forward the local branch ref to match origin
+        git_cli
+            .update_ref(
+                &repo.path,
+                &format!("refs/heads/{}", target_branch),
+                &remote_sha,
+            )
+            .map_err(|e| {
+                ApiError::BadRequest(format!("Failed to update local branch: {}", e))
+            })?;
+    }
+
+    let git = deployment.git();
+    let final_sha = git.get_branch_oid(&repo.path, &target_branch)?;
+    let subject = git.get_commit_subject(&repo.path, &final_sha)?;
+    let short_sha = final_sha.chars().take(7).collect::<String>();
+
+    Ok(ResponseJson(ApiResponse::success(PullMainResult {
+        updated,
+        branch: target_branch,
+        sha: final_sha,
+        short_sha,
+        subject,
+    })))
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/repos", get(get_repos).post(register_repo))
@@ -197,5 +308,7 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/repos/batch", post(get_repos_batch))
         .route("/repos/{repo_id}", get(get_repo).put(update_repo))
         .route("/repos/{repo_id}/branches", get(get_repo_branches))
+        .route("/repos/{repo_id}/main-branch-info", get(get_main_branch_info))
+        .route("/repos/{repo_id}/pull-main", post(pull_main_branch))
         .route("/repos/{repo_id}/search", get(search_repo))
 }

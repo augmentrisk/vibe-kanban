@@ -113,6 +113,8 @@ fn generate_types_content() -> String {
         utils::api::projects::RemoteProjectMembersResponse::decl(),
         server::routes::repo::RegisterRepoRequest::decl(),
         server::routes::repo::InitRepoRequest::decl(),
+        server::routes::repo::MainBranchInfo::decl(),
+        server::routes::repo::PullMainResult::decl(),
         server::routes::tags::TagSearchParams::decl(),
         server::routes::oauth::TokenResponse::decl(),
         server::routes::config::UserSystemInfo::decl(),

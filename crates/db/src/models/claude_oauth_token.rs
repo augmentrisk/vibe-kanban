@@ -1,3 +1,5 @@
+use std::fmt;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
@@ -15,8 +17,18 @@ pub enum ClaudeOAuthTokenError {
     NoTokensAvailable,
 }
 
+/// Obfuscate a sensitive string for logging (show first 8 and last 4 chars)
+fn obfuscate_token(token: &str) -> String {
+    if token.len() <= 12 {
+        return "[REDACTED]".to_string();
+    }
+    let prefix = &token[..8];
+    let suffix = &token[token.len() - 4..];
+    format!("{}...{}", prefix, suffix)
+}
+
 /// Stored Claude Code OAuth token for a user
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+#[derive(Clone, FromRow, Serialize, Deserialize)]
 pub struct ClaudeOAuthToken {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -29,6 +41,21 @@ pub struct ClaudeOAuthToken {
     pub expires_at: Option<DateTime<Utc>>,
     #[sqlx(rename = "last_used_at")]
     pub last_used_at: Option<DateTime<Utc>>,
+}
+
+// Custom Debug implementation to obfuscate the encrypted_token field
+impl fmt::Debug for ClaudeOAuthToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ClaudeOAuthToken")
+            .field("id", &self.id)
+            .field("user_id", &self.user_id)
+            .field("encrypted_token", &obfuscate_token(&self.encrypted_token))
+            .field("token_hint", &self.token_hint)
+            .field("created_at", &self.created_at)
+            .field("expires_at", &self.expires_at)
+            .field("last_used_at", &self.last_used_at)
+            .finish()
+    }
 }
 
 /// Token status for frontend display (no sensitive data)
@@ -252,5 +279,51 @@ mod tests {
         assert!(!status.has_token);
         assert!(status.token_hint.is_none());
         assert!(!status.is_expired);
+    }
+
+    #[test]
+    fn test_obfuscate_token() {
+        // Long token should show first 8 and last 4 chars
+        let long_token = "v1:abcdefghijklmnopqrstuvwxyz";
+        let obfuscated = obfuscate_token(long_token);
+        assert_eq!(obfuscated, "v1:abcde...wxyz");
+        assert!(!obfuscated.contains("jklmnopqrstuv"));
+
+        // Short token should be fully redacted
+        let short_token = "short";
+        let obfuscated = obfuscate_token(short_token);
+        assert_eq!(obfuscated, "[REDACTED]");
+
+        // Edge case: exactly 12 chars should be redacted
+        let edge_token = "123456789012";
+        let obfuscated = obfuscate_token(edge_token);
+        assert_eq!(obfuscated, "[REDACTED]");
+
+        // 13 chars should show prefix and suffix
+        let token_13 = "1234567890123";
+        let obfuscated = obfuscate_token(token_13);
+        assert_eq!(obfuscated, "12345678...0123");
+    }
+
+    #[test]
+    fn test_debug_obfuscates_token() {
+        let token = ClaudeOAuthToken {
+            id: Uuid::nil(),
+            user_id: Uuid::nil(),
+            encrypted_token: "v1:very-secret-token-value-that-should-not-appear-in-logs"
+                .to_string(),
+            token_hint: Some("...logs".to_string()),
+            created_at: Utc::now(),
+            expires_at: None,
+            last_used_at: None,
+        };
+
+        let debug_output = format!("{:?}", token);
+
+        // Should contain obfuscated version
+        assert!(debug_output.contains("v1:very-...logs"));
+
+        // Should NOT contain the middle part of the token
+        assert!(!debug_output.contains("secret-token-value-that-should-not-appear-in"));
     }
 }

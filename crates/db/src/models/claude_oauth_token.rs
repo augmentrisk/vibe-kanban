@@ -1,7 +1,8 @@
+use std::fmt;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
-use std::fmt;
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
@@ -309,7 +310,8 @@ mod tests {
         let token = ClaudeOAuthToken {
             id: Uuid::nil(),
             user_id: Uuid::nil(),
-            encrypted_token: "v1:very-secret-token-value-that-should-not-appear-in-logs".to_string(),
+            encrypted_token: "v1:very-secret-token-value-that-should-not-appear-in-logs"
+                .to_string(),
             token_hint: Some("...logs".to_string()),
             created_at: Utc::now(),
             expires_at: None,
